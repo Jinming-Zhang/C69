@@ -229,7 +229,7 @@ static int check_pid_monitored(int sysc, pid_t pid) {
 }
 //----------------------------------------------------------------
 
-//----- Intercepting exit_group ----------------------------------
+//----- Intercepting exit_group ------------------------------------------------------------------TASKSSSSSSS------------
 /**
  * Since a process can exit without its owner specifically requesting
  * to stop monitoring it, we must intercept the exit_group system call
@@ -251,7 +251,7 @@ void (*orig_exit_group)(int);
  */
 void my_exit_group(int status)
 {
-
+ pid_t exiting_pid = current->pid;
 
 
 }
