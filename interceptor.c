@@ -254,11 +254,10 @@ void my_exit_group(int status)
 {
 	orig_exit_group = table[exit_group].f;
 	// remove the pid of the exiting process from all lists
-  pid_t exiting_pid = current->pid;
- del_pid(exiting_pid);
- // call original exit_group system call
- orig_exit_group();
-
+    pid_t exiting_pid = current->pid;
+    del_pid(exiting_pid);
+    // call original exit_group system call
+    orig_exit_group(status);
 }
 //----------------------------------------------------------------
 
@@ -281,10 +280,9 @@ void my_exit_group(int status)
  * - Don't forget to call the original system call, so we allow processes to proceed as normal.
  */
 asmlinkage long interceptor(struct pt_regs reg) {
-
-
-
-
+	printk(KERN_ALERT "entered\n");
+    log_message(pid, syscall, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di);
+    // call the original system call
 
 	return 0; // Just a placeholder, so it compiles with no warnings!
 }
@@ -339,29 +337,63 @@ asmlinkage long interceptor(struct pt_regs reg) {
  *   you might be holding, before you exit the function (including error cases!).  
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
-	// error check
-	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL){
+	int is_syscall_intercepted = table[syscall].intercepted;
+	int is_pid-monitered = check_pid_monitored(syscall, pid);
+	pid_t calling_pid = current_uid();
+	// check if syscall and pid is valid
+	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL
+		|| pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
 		return -EINVAL;
 	}
     // intercepting the syscall
 	else if(cmd == REQUEST_SYSCALL_INTERCEPT){
-		// error checking
-		if(table[syscall].monitored == 1){
+		// check if syscall is intercepted, permission
+		if(is_syscall_intercepted == 1){
 			return -EBUSY;
+		}else if(calling_pid != 0){
+			return -EPERM;
+		}// perform INTERCEPT task
+		else{
+
 		}
-	}
+
 	// release the syscall
 	else if(cmd == REQUEST_SYSCALL_RELEASE){
-		// error check
-		if(table[syscall].monitored == 0){
+		// check if syscall hasn't be intercepted, permission
+		if(is_syscall_intercepted == 0){
 			return -EINVAL;
+		}else if(calling_pid != 0){
+			return -EPERM;
+		}// perform RELEASER task
+		else{
+
 		}
 	}
+    
+    // moniter processes for a syscall
+	else if(cmd == REQUEST_START_MONITORING){
+		// check permission
+		if(calling_pid !=0 && 
+			(check_pid_from_list(calling_pid, pid) != 0 
+			|| (calling_pid != 0 && pid == 0))){
+			return -EPERM;
+		}else if(is_pid-monitered == 1){
+			return -EBUSY;
+		}// perform START_MONITORING task
+		else{
 
+		}
 
-
-
-
+	// stop moniter processess for a syscall
+	else{
+		if(calling_pid !=0 && 
+			(check_pid_from_list(calling_pid, pid) != 0 
+			|| (calling_pid != 0 && pid == 0))){
+			return -EPERM;
+		}else if(is_pid-monitered == 0 || is_syscall_intercepted == 0){
+			return -EINVAL;
+		}// perform STOP_MONITORING task
+	}
 	return 0;
 }
 
