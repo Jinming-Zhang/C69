@@ -18,6 +18,7 @@ MODULE_LICENSE("GPL");
 
 //----- System Call Table Stuff ------------------------------------
 /* Symbol that allows access to the kernel system call table */
+// a table contains all system calls
 extern void* sys_call_table[];
 
 /* The sys_call_table is read-only => must make it RW before replacing a syscall */
@@ -251,8 +252,12 @@ void (*orig_exit_group)(int);
  */
 void my_exit_group(int status)
 {
- pid_t exiting_pid = current->pid;
-
+	orig_exit_group = table[exit_group].f;
+	// remove the pid of the exiting process from all lists
+  pid_t exiting_pid = current->pid;
+ del_pid(exiting_pid);
+ // call original exit_group system call
+ orig_exit_group();
 
 }
 //----------------------------------------------------------------
@@ -334,7 +339,24 @@ asmlinkage long interceptor(struct pt_regs reg) {
  *   you might be holding, before you exit the function (including error cases!).  
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
-
+	// error check
+	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL){
+		return -EINVAL;
+	}
+    // intercepting the syscall
+	else if(cmd == REQUEST_SYSCALL_INTERCEPT){
+		// error checking
+		if(table[syscall].monitored == 1){
+			return -EBUSY;
+		}
+	}
+	// release the syscall
+	else if(cmd == REQUEST_SYSCALL_RELEASE){
+		// error check
+		if(table[syscall].monitored == 0){
+			return -EINVAL;
+		}
+	}
 
 
 
