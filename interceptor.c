@@ -252,7 +252,6 @@ void (*orig_exit_group)(int);
  */
 void my_exit_group(int status)
 {
-	orig_exit_group = table[exit_group].f;
 	// remove the pid of the exiting process from all lists
     pid_t exiting_pid = current->pid;
     del_pid(exiting_pid);
@@ -354,7 +353,9 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EPERM;
 		}// perform INTERCEPT task
 		else{
-
+			//
+			table[syscall].f = sys_call_table[syscall];
+			sys_call_table[syscall] = interceptor;
 		}
 
 	// release the syscall
@@ -366,7 +367,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EPERM;
 		}// perform RELEASER task
 		else{
-
+			return 0;
 		}
 	}
     
@@ -381,7 +382,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EBUSY;
 		}// perform START_MONITORING task
 		else{
-
+			return 0;
 		}
 
 	// stop moniter processess for a syscall
@@ -393,8 +394,11 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 		}else if(is_pid-monitered == 0 || is_syscall_intercepted == 0){
 			return -EINVAL;
 		}// perform STOP_MONITORING task
+		else{
+			return 0;
+		}
 	}
-	return 0;
+	//return 0;
 }
 
 /**
@@ -419,9 +423,14 @@ long (*orig_custom_syscall)(void);
  * - Ensure synchronization as needed.
  */
 static int init_function(void) {
+	set_addr_rw((unsigned long) sys_call_table);
+	orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];//?
+	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;//?
 
+	orig_exit_group = table[__NR_exit_group];
+	table[__NR_exit_group] = my_exit_group;
 
-
+	[sys_call_table].
 
 
 
