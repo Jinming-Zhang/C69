@@ -279,11 +279,13 @@ void my_exit_group(int status)
  * - Don't forget to call the original system call, so we allow processes to proceed as normal.
  */
 asmlinkage long interceptor(struct pt_regs reg) {
-	printk(KERN_ALERT "entered\n");
-    log_message(pid, syscall, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di);
-    // call the original system call
+	pid_t calling_process = current_uid();
+	int performing_syscall = reg.ax;
 
-	return 0; // Just a placeholder, so it compiles with no warnings!
+	printk(KERN_ALERT "entered interceptor of systemcall %d\n", performing_syscall);
+    log_message(calling_process, performing_syscall, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+    // call the original system call
+    return table[performing_syscall].f(reg);
 }
 
 /**
@@ -429,8 +431,6 @@ static int init_function(void) {
 
 	orig_exit_group = table[__NR_exit_group];
 	table[__NR_exit_group] = my_exit_group;
-
-	[sys_call_table].
 
 
 
