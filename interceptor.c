@@ -283,7 +283,7 @@ asmlinkage long interceptor(struct pt_regs reg) {
 	int performing_syscall = reg.ax;
 
 	printk(KERN_ALERT "entered interceptor of systemcall %d\n", performing_syscall);
-    log_message(calling_process, performing_syscall, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+    log_message(calling_process, performing_syscall, reg.ebx, reg.ecx, reg.edx, reg.si, reg.di, reg.bp);
     // call the original system call
     return table[performing_syscall].f(reg);
 }
