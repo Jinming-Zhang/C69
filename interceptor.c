@@ -376,6 +376,41 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EPERM;
 		}// perform INTERCEPT task
 		else{
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
 			// same the original system call and replace it with the interceptor
 			set_addr_rw((unsigned long) sys_call_table);
 			table[syscall].f = sys_call_table[syscall];
