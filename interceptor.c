@@ -430,6 +430,41 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EPERM;
 		}// perform RELEASER task
 		else{
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
+			printk(KERN_ALERT "Intercepting my_syscall...\n");
 			// retrieve the original system call
 			set_addr_rw((unsigned long) sys_call_table);
 			sys_call_table[syscall] = table[syscall].f;
