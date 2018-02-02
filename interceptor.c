@@ -394,7 +394,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			(check_pid_from_list(calling_pid, pid) != 0 
 			|| (calling_pid != 0 && pid == 0))){
 			return -EPERM;
-		}else if(is_pid-monitered == 0 || is_syscall_intercepted == 0){
+		}else if(is_pid_monitered == 0 || is_syscall_intercepted == 0){
 			return -EINVAL;
 		}// perform STOP_MONITORING task
 		else{
