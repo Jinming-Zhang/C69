@@ -284,7 +284,7 @@ asmlinkage long interceptor(struct pt_regs reg) {
     calling_process = current->pid;
 	performing_syscall = reg.ax;
 
-	printk(KERN_ALERT "entered interceptor %d\n");
+	printk(KERN_ALERT "entered interceptor\n");
 	// intercept task (additional behavior other than original system call)
     log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
 
