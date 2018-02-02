@@ -340,10 +340,10 @@ asmlinkage long interceptor(struct pt_regs reg) {
  *   you might be holding, before you exit the function (including error cases!).  
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
-	printk(KERN_ALERT "processing my_syscall...\n");
 	int is_syscall_intercepted;
 	int is_pid_monitered;
 	pid_t calling_pid;
+	printk(KERN_ALERT "processing my_syscall...\n");
 	is_syscall_intercepted = table[syscall].intercepted;
 	is_pid_monitered = check_pid_monitored(syscall, pid);
 	calling_pid = current_uid();
