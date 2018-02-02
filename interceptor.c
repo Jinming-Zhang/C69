@@ -341,9 +341,12 @@ asmlinkage long interceptor(struct pt_regs reg) {
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	printk(KERN_ALERT "processing my_syscall...\n");
-	int is_syscall_intercepted = table[syscall].intercepted;
-	int is_pid_monitered = check_pid_monitored(syscall, pid);
-	pid_t calling_pid = current_uid();
+	int is_syscall_intercepted;
+	int is_pid_monitered;
+	pid_t calling_pid;
+	is_syscall_intercepted = table[syscall].intercepted;
+	is_pid_monitered = check_pid_monitored(syscall, pid);
+	calling_pid = current_uid();
 	// check if syscall and pid is valid
 	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL
 		|| pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
@@ -437,6 +440,7 @@ long (*orig_custom_syscall)(void);
  * - Ensure synchronization as needed.
  */
 static int init_function(void) {
+	int i;
 	printk(KERN_ALERT "INSTALLING MODLE...\n");
 	printk(KERN_ALERT "Changing syscall table...\n");
 	set_addr_rw((unsigned long) sys_call_table);
@@ -449,7 +453,6 @@ static int init_function(void) {
     set_addr_ro((unsigned long) sys_call_table);
     printk(KERN_ALERT "Now initialize spaces...\n");
 	// allocate spaces for this module (table)
-	int i;
 	for(i = 1; i < NR_syscalls + 1; i++){
 		INIT_LIST_HEAD(&table[i].my_list);
 	}
