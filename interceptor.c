@@ -381,7 +381,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			(check_pid_from_list(calling_pid, pid) != 0 
 			|| (calling_pid != 0 && pid == 0))){
 			return -EPERM;
-		}else if(is_pid-monitered == 1){
+		}else if(is_pid_monitered == 1){
 			return -EBUSY;
 		}// perform START_MONITORING task
 		else{
@@ -431,7 +431,7 @@ static int init_function(void) {
 	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;//?
 
 	orig_exit_group = sys_call_table[__NR_exit_group];
-	table[__NR_exit_group] = my_exit_group;
+	sys_call_table[__NR_exit_group] = my_exit_group;
 
 
 
