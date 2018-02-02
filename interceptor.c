@@ -436,20 +436,23 @@ long (*orig_custom_syscall)(void);
  * - Ensure synchronization as needed.
  */
 static int init_function(void) {
-	printk(KERN_ALERT "INSTALLING MODLE");
+	printk(KERN_ALERT "INSTALLING MODLE...\n");
+	printk(KERN_ALERT "Changing syscall table...\n");
 	set_addr_rw((unsigned long) sys_call_table);
+	printk(KERN_ALERT "Replacing MY_CUSTOM_SYSCALL...\n");
 	orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];//?
 	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;//?
-
+    printk(KERN_ALERT "Replacing my_exit_group...\n");
 	orig_exit_group = sys_call_table[__NR_exit_group];
 	sys_call_table[__NR_exit_group] = my_exit_group;
     set_addr_ro((unsigned long) sys_call_table);
+    printk(KERN_ALERT "Now initialize spaces...\n");
 	// allocate spaces for this module (table)
 	int i;
 	for(i = 1; i < NR_syscalls + 1; i++){
 		INIT_LIST_HEAD(&table[i].my_list);
 	}
-
+    printk(KERN_ALERT "Installing returned...\n");
 
 	return 0;
 }
