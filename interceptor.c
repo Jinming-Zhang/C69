@@ -279,15 +279,17 @@ void my_exit_group(int status)
  * - Don't forget to call the original system call, so we allow processes to proceed as normal.
  */
 asmlinkage long interceptor(struct pt_regs reg) {
-	pid_t calling_process = current->pid;
-	int performing_syscall = reg.ax;
+	pid_t calling_process;
+	//int performing_syscall;
+    calling_process = current->pid;
+	//performing_syscall = reg.ax;
 
 	printk(KERN_ALERT "entered interceptor of systemcall %d\n", performing_syscall);
 	// intercept task (additional behavior other than original system call)
-    log_message(calling_process, performing_syscall, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+    log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
 
     // call the original system call
-    return table[performing_syscall].f(reg);
+    return table[reg.ax].f(reg);
 }
 
 /**
