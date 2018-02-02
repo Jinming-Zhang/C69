@@ -340,6 +340,7 @@ asmlinkage long interceptor(struct pt_regs reg) {
  *   you might be holding, before you exit the function (including error cases!).  
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
+	printk(KERN_ALERT "processing my_syscall...\n");
 	int is_syscall_intercepted = table[syscall].intercepted;
 	int is_pid_monitered = check_pid_monitored(syscall, pid);
 	pid_t calling_pid = current_uid();
@@ -469,12 +470,10 @@ static int init_function(void) {
  */
 static void exit_function(void)
 {        
-
-
-
-
-
-
+set_addr_rw((unsigned long) sys_call_table);
+sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
+sys_call_table[__NR_exit_group] = orig_exit_group;
+set_addr_ro((unsigned long) sys_call_table);
 }
 
 module_init(init_function);
