@@ -441,10 +441,7 @@ static int init_function(void) {
 
 	// allocate spaces for this module (table)
 	int i;
-	i = 0;
-	int length;
-	length = NR_syscalls + 1;
-	for(i; i < length; i++){
+	for(i = 1; i < NR_syscalls + 1; i++){
 		INIT_LIST_HEAD(&table[i].my_list);
 	}
 
