@@ -346,6 +346,19 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	int is_pid_monitered;
 	pid_t calling_pid;
 	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing my_syscall...\n");
 	is_syscall_intercepted = table[syscall].intercepted;
 	is_pid_monitered = check_pid_monitored(syscall, pid);
 	calling_pid = current_uid();
@@ -456,6 +469,10 @@ static int init_function(void) {
     printk(KERN_ALERT "Now initialize spaces...\n");
 	// allocate spaces for this module (table)
 	for(i = 1; i < NR_syscalls + 1; i++){
+		table[i].f = NULL;
+		table[i].intercepted = 0;
+		table[i].monitored = 0;
+		table[i].listcount = 0;
 		INIT_LIST_HEAD(&table[i].my_list);
 	}
     printk(KERN_ALERT "Installing returned...\n");
