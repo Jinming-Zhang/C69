@@ -283,7 +283,9 @@ asmlinkage long interceptor(struct pt_regs reg) {
 	int performing_syscall = reg.ax;
 
 	printk(KERN_ALERT "entered interceptor of systemcall %d\n", performing_syscall);
+	// intercept task (additional behavior other than original system call)
     log_message(calling_process, performing_syscall, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+
     // call the original system call
     return table[performing_syscall].f(reg);
 }
@@ -355,9 +357,11 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EPERM;
 		}// perform INTERCEPT task
 		else{
-			//
+			// same the original system call and replace it with the interceptor
 			table[syscall].f = sys_call_table[syscall];
 			sys_call_table[syscall] = interceptor;
+			// on successful system call (MY_CUSTOM_SYSCALL), return 0
+			return 0;
 		}
 	}
 
@@ -370,6 +374,8 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EPERM;
 		}// perform RELEASER task
 		else{
+			// retrieve the original system call
+			sys_call_table[syscall] = table[syscall].f;
 			return 0;
 		}
 	}
@@ -433,7 +439,11 @@ static int init_function(void) {
 	orig_exit_group = sys_call_table[__NR_exit_group];
 	sys_call_table[__NR_exit_group] = my_exit_group;
 
-
+	// allocate spaces for this module (table)
+	int i;
+	for(i = 0; i < NR_syscalls + 1; i++){
+		INIT_LIST_HEAD(&table[i].my_list);
+	}
 
 
 	return 0;
