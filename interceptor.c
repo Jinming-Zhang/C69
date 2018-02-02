@@ -339,7 +339,7 @@ asmlinkage long interceptor(struct pt_regs reg) {
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	int is_syscall_intercepted = table[syscall].intercepted;
-	int is_pid-monitered = check_pid_monitored(syscall, pid);
+	int is_pid_monitered = check_pid_monitored(syscall, pid);
 	pid_t calling_pid = current_uid();
 	// check if syscall and pid is valid
 	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL
@@ -359,6 +359,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			table[syscall].f = sys_call_table[syscall];
 			sys_call_table[syscall] = interceptor;
 		}
+	}
 
 	// release the syscall
 	else if(cmd == REQUEST_SYSCALL_RELEASE){
@@ -386,7 +387,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 		else{
 			return 0;
 		}
-
+    }
 	// stop moniter processess for a syscall
 	else{
 		if(calling_pid !=0 && 
@@ -429,7 +430,7 @@ static int init_function(void) {
 	orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];//?
 	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;//?
 
-	orig_exit_group = table[__NR_exit_group];
+	orig_exit_group = sys_call_table[__NR_exit_group];
 	table[__NR_exit_group] = my_exit_group;
 
 
