@@ -440,8 +440,11 @@ static int init_function(void) {
 	sys_call_table[__NR_exit_group] = my_exit_group;
 
 	// allocate spaces for this module (table)
-	int i = 0;
-	for(i; i < NR_syscalls + 1; i++){
+	int i;
+	i = 0;
+	int length;
+	length = NR_syscalls + 1;
+	for(i; i < length; i++){
 		INIT_LIST_HEAD(&table[i].my_list);
 	}
 
