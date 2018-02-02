@@ -436,6 +436,7 @@ long (*orig_custom_syscall)(void);
  * - Ensure synchronization as needed.
  */
 static int init_function(void) {
+	printk(KERN_ALERT "INSTALLING MODLE");
 	set_addr_rw((unsigned long) sys_call_table);
 	orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];//?
 	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;//?
