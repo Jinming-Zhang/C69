@@ -362,53 +362,6 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	printk(KERN_ALERT "processing my_syscall...\n");
 	printk(KERN_ALERT "processing my_syscall...\n");
 	is_pid_monitered = check_pid_monitored(syscall, pid);
-    printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	printk(KERN_ALERT "processing my_syscall.................................................................\n");
-	calling_pid = current_uid();
-		printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
 	// check if syscall and pid is valid
 	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL
 		|| pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
@@ -423,41 +376,6 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EPERM;
 		}// perform INTERCEPT task
 		else{
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
 			// same the original system call and replace it with the interceptor
 			set_addr_rw((unsigned long) sys_call_table);
 			table[syscall].f = sys_call_table[syscall];
@@ -477,41 +395,6 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return -EPERM;
 		}// perform RELEASER task
 		else{
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
-			printk(KERN_ALERT "Intercepting my_syscall...\n");
 			// retrieve the original system call
 			set_addr_rw((unsigned long) sys_call_table);
 			sys_call_table[syscall] = table[syscall].f;
@@ -585,14 +468,14 @@ static int init_function(void) {
     set_addr_ro((unsigned long) sys_call_table);
     printk(KERN_ALERT "Now initialize spaces...\n");
 	// allocate spaces for this module (table)
-	for(i = 1; i < NR_syscalls + 1; i++){
+	for(i = 0; i < NR_syscalls + 1; i++){
 		table[i].f = NULL;
 		table[i].intercepted = 0;
 		table[i].monitored = 0;
 		table[i].listcount = 0;
-		INIT_LIST_HEAD(&table[i].my_list);
+		INIT_LIST_HEAD(&(table[i].my_list));
 	}
-    printk(KERN_ALERT "Installing returned...\n");
+    printk(KERN_ALERT "Installing returned...%d\n", table[3].listcount);
 
 	return 0;
 }
