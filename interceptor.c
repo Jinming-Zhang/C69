@@ -343,23 +343,27 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	int is_syscall_intercepted;
 	int is_pid_monitered;
 	pid_t calling_pid;
-
+	printk(KERN_ALERT "processing command %d on syscall %d at pid %d...\n", cmd, syscall, pid);
 	is_syscall_intercepted = table[syscall].intercepted;
 	is_pid_monitered = check_pid_monitored(syscall, pid);
+	printk(KERN_ALERT "is syscall intercepted: %d  is pid monitered: %d\n", is_syscall_intercepted, is_pid_monitered);
 	calling_pid = current_uid();
-	printk(KERN_ALERT "processing command %d on syscall %d at pid %d...\n", cmd, syscall, pid);
+	
 	
 	// check if syscall and pid is valid
 	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL
 		|| pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
+		printk(KERN_ALERT "invalid syscall number\n");
 		return -EINVAL;
 	}
     // intercepting the syscall
 	else if(cmd == REQUEST_SYSCALL_INTERCEPT){
 		// check if syscall is intercepted, permission
 		if(is_syscall_intercepted == 1){
+			printk(KERN_ALERT "syscall already intercepted\n");
 			return -EBUSY;
 		}else if(calling_pid != 0){
+			printk(KERN_ALERT "no root permission\n");
 			return -EPERM;
 		}// perform INTERCEPT task
 		else{
@@ -379,15 +383,19 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	else if(cmd == REQUEST_SYSCALL_RELEASE){
 		// check if syscall hasn't be intercepted, permission
 		if(is_syscall_intercepted == 0){
+			printk(KERN_ALERT "cant release syscall not intercepted\n");
 			return -EINVAL;
 		}else if(calling_pid != 0){
+			printk(KERN_ALERT "no root permission\n");
 			return -EPERM;
 		}// perform RELEASER task
 		else{
+			printk(KERN_ALERT "releasing syscall %d\n", syscall);
 			// retrieve the original system call
 			set_addr_rw((unsigned long) sys_call_table);
 			sys_call_table[syscall] = table[syscall].f;
 			set_addr_ro((unsigned long) sys_call_table);
+			printk(KERN_ALERT "releasing syscall %d finished\n", syscall);
 			return 0;
 		}
 	}
