@@ -430,35 +430,34 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	   		// to monitor all process
 				if(pid == 0){
 					table[syscall].monitored = 2;
+					return 0;
 				}else{
 					// to only monitor the provided pid
 					result = add_pid_sysc(pid, syscall);
 					if(result == 0){
 						table[syscall].listcount++;
 						table[syscall].monitored = 1;
-				  }
+					}
 					return result;
 				}
 			}
-	}
-	// stop moniter processess for a syscall
-	else{
-		is_pid_monitered = check_pid_monitored(syscall, pid);
-		if(calling_pid !=0 && 
-			(check_pid_from_list(calling_pid, pid) != 0 
-				|| (calling_pid != 0 && pid == 0))){
-			return -EPERM;
-	}else if(is_pid_monitered == 0 || is_syscall_intercepted == 0){
-		return -EINVAL;
+		}
+  	// stop moniter processess for a syscall
+	  else{
+			is_pid_monitered = check_pid_monitored(syscall, pid);
+			if(calling_pid !=0 && 
+				(check_pid_from_list(calling_pid, pid) != 0 
+					|| (calling_pid != 0 && pid == 0))){
+				return -EPERM;
+		}else if(is_pid_monitered == 0 || is_syscall_intercepted == 0){
+			return -EINVAL;
 		}// perform STOP_MONITORING task
 		else{
 			return 0;
 		}
 	}
-	//return 0;
+  }
 }
-}
-
 /**
  *
  */
@@ -475,24 +474,24 @@ int check_valid_start_monitor(int syscall, int pid){
 	is_pid_monitered = check_pid_monitored(syscall, pid);
 	is_syscall_intercepted = table[syscall].intercepted;
 	calling_process = current_uid();
-  if(pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
-  	is_exist = 1;
-  }else{
-  	is_exist = 0;
-  }
+	if(pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
+		is_exist = 1;
+	}else{
+		is_exist = 0;
+	}
 
   // checking conditions-----------
   // pid doesn't exist
-  if(pid < 0 || is_exist == 0){
-  	return -EINVAL;
-  }
+	if(pid < 0 || is_exist == 0){
+		return -EINVAL;
+	}
 
   // syscall not intercepted
-  else if(is_syscall_intercepted == 0){
-  	return -EINVAL;
-  }
+	else if(is_syscall_intercepted == 0){
+		return -EINVAL;
+	}
   // cases when calling process is not root
-  else if(calling_process != 0){
+	else if(calling_process != 0){
 		// if its parents 
 		if(check_pid_from_list(calling_process, pid) == 0){
 			return 0;
@@ -501,9 +500,9 @@ int check_valid_start_monitor(int syscall, int pid){
 	}
 
   // if pid is already monitored by the syscall
-  else if(check_pid_monitored(syscall, pid) == 1){
-  	return -EBUSY;
-  }
+	else if(check_pid_monitored(syscall, pid) == 1){
+		return -EBUSY;
+	}
 	else{
 		return 0;
 	}
