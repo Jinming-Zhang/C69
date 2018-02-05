@@ -352,11 +352,11 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	}
 	else{
 		is_syscall_intercepted = table[syscall].intercepted;
-		is_pid_monitered = check_pid_monitored(syscall, pid);
-		printk(KERN_ALERT "is syscall intercepted: %d  is pid monitered: %d\n", is_syscall_intercepted, is_pid_monitered);
+		//is_pid_monitered = check_pid_monitored(syscall, pid);
+		printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
 		calling_pid = current_uid();
    		 // intercepting the syscall
-		 if(cmd == REQUEST_SYSCALL_INTERCEPT){
+		if(cmd == REQUEST_SYSCALL_INTERCEPT){
 			// check if syscall is intercepted, permission
 			if(is_syscall_intercepted == 1){
 			printk(KERN_ALERT "syscall already intercepted\n");
@@ -369,9 +369,11 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			// same the original system call and replace it with the interceptor
 			printk(KERN_ALERT "Intercepting syscall %d\n", syscall);
 			set_addr_rw((unsigned long) sys_call_table);
+			spin_lock(&calltable_lock);
 			table[syscall].f = sys_call_table[syscall];
 			sys_call_table[syscall] = interceptor;
 			set_addr_ro((unsigned long) sys_call_table);
+			spin_unlokc(&calltable_lock);
 			printk(KERN_ALERT "Intercepting syscall %d finished\n", syscall);
 			// on successful system call (MY_CUSTOM_SYSCALL), return 0
 			return 0;
