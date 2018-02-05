@@ -494,9 +494,10 @@ int check_valid_start_monitor(int syscall, int pid){
   // cases when calling process is not root
   else if(calling_process != 0){
 		// if its parents 
-		if(check_pid_from_list(calling_process, pid) != 0 || pid == 0){
-			return -EPERM;
+		if(check_pid_from_list(calling_process, pid) == 0){
+			return 0;
 		}
+		return -EPERM;
 	}
 
   // if pid is already monitored by the syscall
