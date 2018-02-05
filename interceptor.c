@@ -373,7 +373,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			table[syscall].f = sys_call_table[syscall];
 			sys_call_table[syscall] = interceptor;
 			set_addr_ro((unsigned long) sys_call_table);
-			spin_unlokc(&calltable_lock);
+			spin_unlock(&calltable_lock);
 			printk(KERN_ALERT "Intercepting syscall %d finished\n", syscall);
 			// on successful system call (MY_CUSTOM_SYSCALL), return 0
 			return 0;
