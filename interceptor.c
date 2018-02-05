@@ -351,7 +351,6 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	}
 	else{
 		is_syscall_intercepted = table[syscall].intercepted;
-		is_pid_monitered = check_pid_monitored(syscall, pid);
 		printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
 		calling_pid = current_uid();
    		 // intercepting the syscall
@@ -383,6 +382,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 
 	// release the syscall
 	else if(cmd == REQUEST_SYSCALL_RELEASE){
+		is_pid_monitered = check_pid_monitored(syscall, pid);
 		// check if syscall hasn't be intercepted, permission
 		if(is_syscall_intercepted == 0){
 			printk(KERN_ALERT "cant release syscall not intercepted\n");
@@ -406,6 +406,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
     
     // moniter processes for a syscall
 	else if(cmd == REQUEST_START_MONITORING){
+		is_pid_monitered = check_pid_monitored(syscall, pid);
 		// check permission
 		if(calling_pid !=0 && 
 			(check_pid_from_list(calling_pid, pid) != 0 
