@@ -398,6 +398,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			set_addr_rw((unsigned long) sys_call_table);
 			sys_call_table[syscall] = table[syscall].f;
 			table[syscall].intercepted = 0;
+			table[syscall].f = NULL;
 			set_addr_ro((unsigned long) sys_call_table);
 			printk(KERN_ALERT "releasing syscall %d finished\n", syscall);
 			return 0;
