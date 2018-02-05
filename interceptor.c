@@ -348,18 +348,22 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	int is_syscall_intercepted;
 	int is_pid_monitered;
 	pid_t calling_pid;
+	int result;
 	printk(KERN_ALERT "processing command %d on syscall %d at pid %d...\n", cmd, syscall, pid);
-	// check if syscall and pid is valid
+
+	// check if syscall number is valid
 	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL){
 		//|| pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
 		printk(KERN_ALERT "invalid syscall number\n");
 		return -EINVAL;
 	}
+	// check and perform different commands
 	else{
 		is_syscall_intercepted = table[syscall].intercepted;
 		printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
 		calling_pid = current_uid();
-   		 // intercepting the syscall
+
+   	// intercepting the syscall
 		if(cmd == REQUEST_SYSCALL_INTERCEPT){
 			// check if syscall is intercepted, permission
 			if(is_syscall_intercepted == 1){
@@ -368,61 +372,72 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			}else if(calling_pid != 0){
 				printk(KERN_ALERT "no root permission\n");
 				return -EPERM;
-		}// perform INTERCEPT task
-		else{
-			// same the original system call and replace it with the interceptor
-			printk(KERN_ALERT "Intercepting syscall %d\n", syscall);
-			set_addr_rw((unsigned long) sys_call_table);
-			spin_lock(&calltable_lock);
-			table[syscall].f = sys_call_table[syscall];
-			table[syscall].intercepted = 1;
-			sys_call_table[syscall] = interceptor;
-			// update
-			set_addr_ro((unsigned long) sys_call_table);
-			spin_unlock(&calltable_lock);
-			printk(KERN_ALERT "Intercepting syscall %d finished\n", syscall);
-			// on successful system call (MY_CUSTOM_SYSCALL), return 0
-			return 0;
-		}
-	}
+			}else{
+		  	// perform INTERCEPT task
+				printk(KERN_ALERT "Intercepting syscall %d\n", syscall);
 
-	// release the syscall
-	else if(cmd == REQUEST_SYSCALL_RELEASE){
-		// check if syscall hasn't be intercepted, permission
-		if(is_syscall_intercepted == 0){
-			printk(KERN_ALERT "cant release syscall not intercepted\n");
-			return -EINVAL;
-		}else if(calling_pid != 0){
-			printk(KERN_ALERT "no root permission\n");
-			return -EPERM;
-		}// perform RELEASER task
-		else{
-			printk(KERN_ALERT "releasing syscall %d\n", syscall);
-			// retrieve the original system call
-			set_addr_rw((unsigned long) sys_call_table);
-			sys_call_table[syscall] = table[syscall].f;
-			table[syscall].intercepted = 0;
-			table[syscall].f = NULL;
-			set_addr_ro((unsigned long) sys_call_table);
-			printk(KERN_ALERT "releasing syscall %d finished\n", syscall);
-			return 0;
-		}
-	}
+			  // save the original system call and replace it with the interceptor
+				spin_lock(&calltable_lock);
+				set_addr_rw((unsigned long) sys_call_table);
+				table[syscall].f = sys_call_table[syscall];
+				table[syscall].intercepted = 1;
+				sys_call_table[syscall] = interceptor;
+				set_addr_ro((unsigned long) sys_call_table);
+				spin_unlock(&calltable_lock);
 
-    // moniter processes for a syscall
-	else if(cmd == REQUEST_START_MONITORING){
-		is_pid_monitered = check_pid_monitored(syscall, pid);
-		// check permission
-		if(calling_pid !=0 && 
-			(check_pid_from_list(calling_pid, pid) != 0 
-				|| (calling_pid != 0 && pid == 0))){
-			return -EPERM;
-	}else if(is_pid_monitered == 1){
-		return -EBUSY;
-		}// perform START_MONITORING task
-		else{
-			return 0;
+				printk(KERN_ALERT "Intercepting syscall %d finished\n", syscall);
+			  // on successful, return 0
+				return 0;
+			}
 		}
+
+	  // RELEASE the syscall
+		else if(cmd == REQUEST_SYSCALL_RELEASE){
+		  // check if syscall has be intercepted, permission
+			if(is_syscall_intercepted == 0){
+				printk(KERN_ALERT "cant release syscall not intercepted\n");
+				return -EINVAL;
+			}else if(calling_pid != 0){
+				printk(KERN_ALERT "no root permission\n");
+				return -EPERM;
+			}else{
+			  // perform RELEASER task
+				printk(KERN_ALERT "releasing syscall %d\n", syscall);
+
+		  	// retrieve the original system call
+				spin_lock(&calltable_lock);
+				set_addr_rw((unsigned long) sys_call_table);
+				sys_call_table[syscall] = table[syscall].f;
+				table[syscall].intercepted = 0;
+				table[syscall].f = NULL;
+				destroy_list(syscall);
+				set_addr_ro((unsigned long) sys_call_table);
+				spin_unlock(&calltable_lock);
+
+				printk(KERN_ALERT "releasing syscall %d finished\n", syscall);
+				return 0;
+			}
+		}
+
+    // perfrom REQUEST_START_MONITORING
+		else if(cmd == REQUEST_START_MONITORING){
+			if(check_valid_start_monitor(syscall, pid) != 0){
+				return check_valid_start_monitor(syscall, pid);
+			}else{
+	   		// perform START_MONITORING task
+	   		// to monitor all process
+				if(pid == 0){
+					table[syscall].monitored = 2;
+				}else{
+					// to only monitor the provided pid
+					result = add_pid_sysc(pid, syscall);
+					if(result == 0){
+						table[syscall].listcount++;
+						table[syscall].monitored = 1;
+				  }
+					return result;
+				}
+			}
 	}
 	// stop moniter processess for a syscall
 	else{
@@ -446,6 +461,52 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
  *
  */
 long (*orig_custom_syscall)(void);
+
+
+int check_valid_start_monitor(int syscall, int pid){
+	int result;
+	int is_pid_monitered;
+	int is_syscall_intercepted;
+	int calling_process;
+	int is_exist;
+
+	// initialize variables
+	is_pid_monitered = check_pid_monitored(syscall pid);
+	is_syscall_intercepted = table[syscall].intercepted;
+	calling_process = current_uid();
+  if(pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
+  	is_exist = 1;
+  }else{
+  	is_exist = 0;
+  }
+
+  // checking conditions-----------
+  // pid doesn't exist
+  if(pid < 0 || is_exist == 0){
+  	return -EINVAL;
+  }
+
+  // syscall not intercepted
+  else if(is_syscall_intercepted == 0){
+  	return -EINVAL;
+  }
+  // cases when calling process is not root
+  else if(calling_process != 0){
+		// if its parents 
+		if(check_pid_from_list(calling_process, pid) != 0 || pid == 0){
+			return -EPERM;
+		}
+	}
+
+  // if pid is already monitored by the syscall
+  else if(check_pid_monitored(syscall, pid) == 1){
+  	return -EBUSY;
+  }
+	else{
+		return 0;
+	}
+}
+
 
 
 /**
