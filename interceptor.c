@@ -349,12 +349,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	is_syscall_intercepted = table[syscall].intercepted;
 	is_pid_monitered = check_pid_monitored(syscall, pid);
 	calling_pid = current_uid();
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
-	printk(KERN_ALERT "processing my_syscall...\n");
+	printk(KERN_ALERT "processing command %d on syscall %d at pid %d...\n", cmd, syscall, pid);
 	
 	// check if syscall and pid is valid
 	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL
