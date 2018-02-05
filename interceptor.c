@@ -463,7 +463,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 long (*orig_custom_syscall)(void);
 
 
-static int check_valid_start_monitor(int syscall, int pid){
+int check_valid_start_monitor(int syscall, int pid){
 	int is_pid_monitered;
 	int is_syscall_intercepted;
 	int calling_process;
