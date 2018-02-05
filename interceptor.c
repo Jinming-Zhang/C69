@@ -16,6 +16,8 @@ MODULE_DESCRIPTION("My kernel module");
 MODULE_AUTHOR("Me");
 MODULE_LICENSE("GPL");
 
+// helper functions
+int check_valid_start_monitor(int syscall, int pid);
 //----- System Call Table Stuff ------------------------------------
 /* Symbol that allows access to the kernel system call table */
 // a table contains all system calls
