@@ -287,7 +287,7 @@ asmlinkage long interceptor(struct pt_regs reg) {
 
   // check if the calling process is in the monitored list
 	spin_lock(&pidlist_lock);
-	if(check_pid_monitored(reg.ax, calling_process) == 1){
+	if(table[reg.ax].monitored == 2 || check_pid_monitored(reg.ax, calling_process) == 1){
 		log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
 		printk(KERN_ALERT "logged the message, now calling the original syscall\n");
 	}
@@ -433,7 +433,9 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 					return 0;
 				}else{
 					// to only monitor the provided pid
+					spin_lock(&pidlist_lock);
 					result = add_pid_sysc(pid, syscall);
+					spin_unlock(&pidlist_lock);
 					if(result == 0){
 						table[syscall].listcount++;
 						table[syscall].monitored = 1;
@@ -442,21 +444,32 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 				}
 			}
 		}
-  	// stop moniter processess for a syscall
-	  else{
+  	// REQUEST_STOP_MONITORING
+		else{
 			is_pid_monitered = check_pid_monitored(syscall, pid);
 			if(calling_pid !=0 && 
 				(check_pid_from_list(calling_pid, pid) != 0 
 					|| (calling_pid != 0 && pid == 0))){
 				return -EPERM;
-		}else if(is_pid_monitered == 0 || is_syscall_intercepted == 0){
-			return -EINVAL;
-		}// perform STOP_MONITORING task
-		else{
-			return 0;
+			}else if(is_pid_monitered == 0 || is_syscall_intercepted == 0){
+				return -EINVAL;
+			}else{
+				// perform STOP_MONITORING task
+				spin_lock(&pidlist_lock);
+				result = del_pid_sysc(pid, syscall);
+				spin_unlock(&pidlist_lock);
+				if(result == 0){
+					table[syscall].listcount--;
+					if(table[syscall].monitored == 2){
+						table[syscall].monitored == 1;
+					}
+				}
+				else{
+					return result;
+				}
+			}
 		}
 	}
-  }
 }
 /**
  *
@@ -500,7 +513,7 @@ int check_valid_start_monitor(int syscall, int pid){
 	}
 
   // if pid is already monitored by the syscall
-	else if(check_pid_monitored(syscall, pid) == 1){
+	else if(check_pid_monitored(syscall, pid) == 1 || table[syscall].monitored == 2){
 		return -EBUSY;
 	}
 	else{
