@@ -279,13 +279,13 @@ void my_exit_group(int status)
  * - Don't forget to call the original system call, so we allow processes to proceed as normal.
  */
 asmlinkage long interceptor(struct pt_regs reg) {
-	pid_t calling_process;
+	  pid_t calling_process;
     calling_process = current->pid;
 
 	printk(KERN_ALERT "entered interceptor\n");
 	// intercept task (additional behavior other than original system call)
     log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
-
+   printk(KERN_ALERT "logged the message, now calling the original syscall\n");
     // call the original system call
     return table[reg.ax].f(reg);
 }
@@ -371,7 +371,9 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			set_addr_rw((unsigned long) sys_call_table);
 			spin_lock(&calltable_lock);
 			table[syscall].f = sys_call_table[syscall];
+			table[syscall].intercepted = 1;
 			sys_call_table[syscall] = interceptor;
+			// update
 			set_addr_ro((unsigned long) sys_call_table);
 			spin_unlock(&calltable_lock);
 			printk(KERN_ALERT "Intercepting syscall %d finished\n", syscall);
@@ -395,6 +397,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			// retrieve the original system call
 			set_addr_rw((unsigned long) sys_call_table);
 			sys_call_table[syscall] = table[syscall].f;
+			table[syscall].intercepted = 0;
 			set_addr_ro((unsigned long) sys_call_table);
 			printk(KERN_ALERT "releasing syscall %d finished\n", syscall);
 			return 0;
