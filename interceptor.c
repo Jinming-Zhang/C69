@@ -512,7 +512,7 @@ static void exit_function(void)
 	sys_call_table[__NR_exit_group] = orig_exit_group;
 	orig_exit_group = NULL;
 	set_addr_ro((unsigned long) sys_call_table);
-	spin_lock(&calltable_lock);
+	spin_unlock(&calltable_lock);
 }
 
 module_init(init_function);
