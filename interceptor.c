@@ -281,13 +281,14 @@ void my_exit_group(int status)
 asmlinkage long interceptor(struct pt_regs reg) {
 	  pid_t calling_process;
     calling_process = current->pid;
-
+    asmlinkage long (*f)(struct pt_regs);
+    f = table[reg.ax].f;
 	printk(KERN_ALERT "entered interceptor\n");
 	// intercept task (additional behavior other than original system call)
     log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
    printk(KERN_ALERT "logged the message, now calling the original syscall\n");
     // call the original system call
-    return table[reg.ax].f(reg);
+    return f(reg);
 }
 
 /**
