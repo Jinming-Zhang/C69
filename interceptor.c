@@ -344,20 +344,19 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	int is_pid_monitered;
 	pid_t calling_pid;
 	printk(KERN_ALERT "processing command %d on syscall %d at pid %d...\n", cmd, syscall, pid);
-	is_syscall_intercepted = table[syscall].intercepted;
-	is_pid_monitered = check_pid_monitored(syscall, pid);
-	printk(KERN_ALERT "is syscall intercepted: %d  is pid monitered: %d\n", is_syscall_intercepted, is_pid_monitered);
-	calling_pid = current_uid();
-	
-	
 	// check if syscall and pid is valid
 	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL
 		|| pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
 		printk(KERN_ALERT "invalid syscall number\n");
 		return -EINVAL;
 	}
+	else{
+	is_syscall_intercepted = table[syscall].intercepted;
+	is_pid_monitered = check_pid_monitored(syscall, pid);
+	printk(KERN_ALERT "is syscall intercepted: %d  is pid monitered: %d\n", is_syscall_intercepted, is_pid_monitered);
+	calling_pid = current_uid();
     // intercepting the syscall
-	else if(cmd == REQUEST_SYSCALL_INTERCEPT){
+	 if(cmd == REQUEST_SYSCALL_INTERCEPT){
 		// check if syscall is intercepted, permission
 		if(is_syscall_intercepted == 1){
 			printk(KERN_ALERT "syscall already intercepted\n");
@@ -428,6 +427,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 		}
 	}
 	//return 0;
+}
 }
 
 /**
