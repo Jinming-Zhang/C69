@@ -218,7 +218,7 @@ static int check_pid_monitored(int sysc, pid_t pid) {
 
 	struct list_head *i;
 	struct pid_list *ple;
-    printk(KERN_ALERT "Check_pid_monitored----------------------------\n");
+	printk(KERN_ALERT "Check_pid_monitored----------------------------\n");
 	list_for_each(i, &(table[sysc].my_list)) {
 
 		ple=list_entry(i, struct pid_list, list);
@@ -253,10 +253,10 @@ void (*orig_exit_group)(int);
 void my_exit_group(int status)
 {
 	// remove the pid of the exiting process from all lists
-    pid_t exiting_pid = current->pid;
-    del_pid(exiting_pid);
-    // call original exit_group system call
-    orig_exit_group(status);
+	pid_t exiting_pid = current->pid;
+	del_pid(exiting_pid);
+  // call original exit_group system call
+	orig_exit_group(status);
 }
 //----------------------------------------------------------------
 
@@ -279,14 +279,20 @@ void my_exit_group(int status)
  * - Don't forget to call the original system call, so we allow processes to proceed as normal.
  */
 asmlinkage long interceptor(struct pt_regs reg) {
-	  pid_t calling_process;
-    calling_process = current->pid;
-	  printk(KERN_ALERT "entered interceptor for syscall %lx\n", reg.ax);
-  	// intercept task (additional behavior other than original system call)
-    log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
-    printk(KERN_ALERT "logged the message, now calling the original syscall\n");
-    // call the original system call
-    return table[reg.ax].f(reg);
+	pid_t calling_process;
+	calling_process = current->pid;
+	printk(KERN_ALERT "entered interceptor for syscall %lx\n", reg.ax);
+
+  // check if the calling process is in the monitored list
+	spin_lock(&pidlist_lock);
+	if(check_pid_monitored(reg.ax, calling_process) == 1){
+		log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+		printk(KERN_ALERT "logged the message, now calling the original syscall\n");
+	}
+	spin_unlock(&pidlist_lock);
+	
+  // call the original system call
+	return table[reg.ax].f(reg);
 }
 
 /**
@@ -357,11 +363,11 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 		if(cmd == REQUEST_SYSCALL_INTERCEPT){
 			// check if syscall is intercepted, permission
 			if(is_syscall_intercepted == 1){
-			printk(KERN_ALERT "syscall already intercepted\n");
-			return -EBUSY;
-		}else if(calling_pid != 0){
-			printk(KERN_ALERT "no root permission\n");
-			return -EPERM;
+				printk(KERN_ALERT "syscall already intercepted\n");
+				return -EBUSY;
+			}else if(calling_pid != 0){
+				printk(KERN_ALERT "no root permission\n");
+				return -EPERM;
 		}// perform INTERCEPT task
 		else{
 			// same the original system call and replace it with the interceptor
@@ -402,31 +408,31 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			return 0;
 		}
 	}
-    
+
     // moniter processes for a syscall
 	else if(cmd == REQUEST_START_MONITORING){
 		is_pid_monitered = check_pid_monitored(syscall, pid);
 		// check permission
 		if(calling_pid !=0 && 
 			(check_pid_from_list(calling_pid, pid) != 0 
-			|| (calling_pid != 0 && pid == 0))){
+				|| (calling_pid != 0 && pid == 0))){
 			return -EPERM;
-		}else if(is_pid_monitered == 1){
-			return -EBUSY;
+	}else if(is_pid_monitered == 1){
+		return -EBUSY;
 		}// perform START_MONITORING task
 		else{
 			return 0;
 		}
-    }
+	}
 	// stop moniter processess for a syscall
 	else{
 		is_pid_monitered = check_pid_monitored(syscall, pid);
 		if(calling_pid !=0 && 
 			(check_pid_from_list(calling_pid, pid) != 0 
-			|| (calling_pid != 0 && pid == 0))){
+				|| (calling_pid != 0 && pid == 0))){
 			return -EPERM;
-		}else if(is_pid_monitered == 0 || is_syscall_intercepted == 0){
-			return -EINVAL;
+	}else if(is_pid_monitered == 0 || is_syscall_intercepted == 0){
+		return -EINVAL;
 		}// perform STOP_MONITORING task
 		else{
 			return 0;
@@ -461,16 +467,20 @@ static int init_function(void) {
 	int i;
 	printk(KERN_ALERT "INSTALLING MODLE...............................\n");
 	printk(KERN_ALERT "Changing syscall table...\n");
+	// manipulating sys_call_table..................
+	spin_lock(&calltable_lock);
 	set_addr_rw((unsigned long) sys_call_table);
 	printk(KERN_ALERT "Replacing MY_CUSTOM_SYSCALL...\n");
 	orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];//?
-	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;//?
-    printk(KERN_ALERT "Replacing my_exit_group...\n");
+	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;
+	printk(KERN_ALERT "Replacing my_exit_group...\n");
 	orig_exit_group = sys_call_table[__NR_exit_group];
 	sys_call_table[__NR_exit_group] = my_exit_group;
-    set_addr_ro((unsigned long) sys_call_table);
-    printk(KERN_ALERT "Now initialize spaces...\n");
+	set_addr_ro((unsigned long) sys_call_table);
+	spin_unlock(&calltable_lock);
+
 	// allocate spaces for this module (table)
+	printk(KERN_ALERT "Now initialize spaces...\n");
 	for(i = 0; i < NR_syscalls + 1; i++){
 		table[i].f = NULL;
 		table[i].intercepted = 0;
@@ -478,7 +488,7 @@ static int init_function(void) {
 		table[i].listcount = 0;
 		INIT_LIST_HEAD(&(table[i].my_list));
 	}
-    printk(KERN_ALERT "Installing returned.............................%d\n", table[3].listcount);
+	printk(KERN_ALERT "Installing returned.............................%d\n", table[3].listcount);
 
 	return 0;
 }
@@ -494,11 +504,15 @@ static int init_function(void) {
  * - Ensure synchronization, if needed.
  */
 static void exit_function(void)
-{        
-set_addr_rw((unsigned long) sys_call_table);
-sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
-sys_call_table[__NR_exit_group] = orig_exit_group;
-set_addr_ro((unsigned long) sys_call_table);
+{
+	spin_lock(&calltable_lock);
+	set_addr_rw((unsigned long) sys_call_table);
+	sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
+	orig_custom_syscall = NULL;
+	sys_call_table[__NR_exit_group] = orig_exit_group;
+	orig_exit_group = NULL;
+	set_addr_ro((unsigned long) sys_call_table);
+	spin_lock(&calltable_lock)
 }
 
 module_init(init_function);
