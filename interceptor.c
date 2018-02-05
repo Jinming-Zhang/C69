@@ -290,7 +290,7 @@ asmlinkage long interceptor(struct pt_regs reg) {
 		printk(KERN_ALERT "logged the message, now calling the original syscall\n");
 	}
 	spin_unlock(&pidlist_lock);
-	
+
   // call the original system call
 	return table[reg.ax].f(reg);
 }
@@ -512,7 +512,7 @@ static void exit_function(void)
 	sys_call_table[__NR_exit_group] = orig_exit_group;
 	orig_exit_group = NULL;
 	set_addr_ro((unsigned long) sys_call_table);
-	spin_lock(&calltable_lock)
+	spin_lock(&calltable_lock);
 }
 
 module_init(init_function);
