@@ -464,14 +464,13 @@ long (*orig_custom_syscall)(void);
 
 
 int check_valid_start_monitor(int syscall, int pid){
-	int result;
 	int is_pid_monitered;
 	int is_syscall_intercepted;
 	int calling_process;
 	int is_exist;
 
 	// initialize variables
-	is_pid_monitered = check_pid_monitored(syscall pid);
+	is_pid_monitered = check_pid_monitored(syscall, pid);
 	is_syscall_intercepted = table[syscall].intercepted;
 	calling_process = current_uid();
   if(pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
