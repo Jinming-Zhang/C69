@@ -218,7 +218,7 @@ static int check_pid_monitored(int sysc, pid_t pid) {
 
 	struct list_head *i;
 	struct pid_list *ple;
-    printk(KERN_ALERT "FORLOOP\n");
+    printk(KERN_ALERT "Check_pid_monitored----------------------------\n");
 	list_for_each(i, &(table[sysc].my_list)) {
 
 		ple=list_entry(i, struct pid_list, list);
@@ -280,16 +280,14 @@ void my_exit_group(int status)
  */
 asmlinkage long interceptor(struct pt_regs reg) {
 	pid_t calling_process;
-	int performing_syscall;
     calling_process = current->pid;
-	performing_syscall = reg.ax;
 
 	printk(KERN_ALERT "entered interceptor\n");
 	// intercept task (additional behavior other than original system call)
     log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
 
     // call the original system call
-    return table[performing_syscall].f(reg);
+    return table[reg.ax].f(reg);
 }
 
 /**
@@ -366,10 +364,12 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 		}// perform INTERCEPT task
 		else{
 			// same the original system call and replace it with the interceptor
+			printk(KERN_ALERT "Intercepting syscall %d\n", syscall);
 			set_addr_rw((unsigned long) sys_call_table);
 			table[syscall].f = sys_call_table[syscall];
 			sys_call_table[syscall] = interceptor;
 			set_addr_ro((unsigned long) sys_call_table);
+			printk(KERN_ALERT "Intercepting syscall %d finished\n", syscall);
 			// on successful system call (MY_CUSTOM_SYSCALL), return 0
 			return 0;
 		}
@@ -445,7 +445,7 @@ long (*orig_custom_syscall)(void);
  */
 static int init_function(void) {
 	int i;
-	printk(KERN_ALERT "INSTALLING MODLE...\n");
+	printk(KERN_ALERT "INSTALLING MODLE...............................\n");
 	printk(KERN_ALERT "Changing syscall table...\n");
 	set_addr_rw((unsigned long) sys_call_table);
 	printk(KERN_ALERT "Replacing MY_CUSTOM_SYSCALL...\n");
@@ -464,7 +464,7 @@ static int init_function(void) {
 		table[i].listcount = 0;
 		INIT_LIST_HEAD(&(table[i].my_list));
 	}
-    printk(KERN_ALERT "Installing returned...%d\n", table[3].listcount);
+    printk(KERN_ALERT "Installing returned.............................%d\n", table[3].listcount);
 
 	return 0;
 }
