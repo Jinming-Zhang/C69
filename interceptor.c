@@ -218,7 +218,7 @@ static int check_pid_monitored(int sysc, pid_t pid) {
 
 	struct list_head *i;
 	struct pid_list *ple;
-	printk(KERN_ALERT "Check_pid_monitored----------------------------\n");
+	printk(KERN_ALERT "Check_pid_monitored pid: %d  sysc: %d--\n", pid, sysc);
 	list_for_each(i, &(table[sysc].my_list)) {
 
 		ple=list_entry(i, struct pid_list, list);
