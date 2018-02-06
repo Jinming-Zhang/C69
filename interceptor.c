@@ -471,12 +471,14 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			if(calling_pid !=0 && 
 				(check_pid_from_list(calling_pid, pid) != 0 
 					|| (calling_pid != 0 && pid == 0))){
+				printk(KERN_ALERT "no permission to STOP monitor process %d on syscall %d, run at %d.\n", pid, syscall, current_uid());
 				return -EPERM;
 			}else if((table[syscall].monitored == 1 && is_pid_monitered == 0) || is_syscall_intercepted == 0 || table[syscall].monitored == 0){
+				printk(KERN_ALERT "Invalid to STOP monitor process %d on syscall %d, run at %d.\n", pid, syscall, current_uid());
 				return -EINVAL;
 			}else{
 				// perform STOP_MONITORING task
-
+				printk(KERN_ALERT "valid STOP monitoring call, now monitor process %d on syscall %d, run at %d\n", pid, syscall, current_uid());
 				// if need to stop monitor all processes
 				if(pid == 0){
 						table[syscall].monitored = 0;
