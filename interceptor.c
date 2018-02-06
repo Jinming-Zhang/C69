@@ -350,7 +350,6 @@ asmlinkage long interceptor(struct pt_regs reg) {
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	int is_syscall_intercepted;
-	int is_pid_monitored;
 	pid_t calling_pid;
 	int result;
 	printk(KERN_ALERT "processing command %d on syscall %d at pid %d...\n", cmd, syscall, pid);
