@@ -584,7 +584,7 @@ int check_valid_start_monitor(int syscall, int pid){
 		int is_pid_monitored;
 
 	// 
-		printk(KERN_ALERT "calling exist: %p, pid exist: %p", pid_task(find_vpid(current_uid()), PIDTYPE_PID), pid_task(find_vpid(pid), PIDTYPE_PID));
+		printk(KERN_ALERT "calling exist: %p, pid exist: %p", pid_task(find_vpid(current-pid, PIDTYPE_PID), pid_task(find_vpid(pid), PIDTYPE_PID));
 		if((pid_task(find_vpid(pid), PIDTYPE_PID) == NULL) || pid < 0){
 			printk(KERN_ALERT "pid %d not exist or is less than 0\n", pid);
 			return -EINVAL;
@@ -598,7 +598,7 @@ int check_valid_start_monitor(int syscall, int pid){
 		else if(current_uid() != 0){
 			printk(KERN_ALERT "not runed by root, now checking relation\n");
 		//  
-			printk(KERN_ALERT "calling exist: %p, pid exist: %p", pid_task(find_vpid(current_uid()), PIDTYPE_PID), pid_task(find_vpid(pid), PIDTYPE_PID));
+			printk(KERN_ALERT "calling exist: %p, pid exist: %p", pid_task(find_vpid(current->pid, PIDTYPE_PID), pid_task(find_vpid(pid), PIDTYPE_PID));
 			if(check_pid_from_list(current_uid(), pid) != 1){
 				printk(KERN_ALERT "no relation between two process, no permission\n");
 				return -EPERM;
