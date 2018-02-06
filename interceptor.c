@@ -468,6 +468,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			is_syscall_intercepted = table[syscall].intercepted;
 		  printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
 			is_pid_monitered = check_pid_monitored(syscall, pid);
+			printk(KERN_ALERT "is pid %d monitored by the syscall: %d\n", pid, is_pid_monitered);
 			if(calling_pid !=0 && 
 				(check_pid_from_list(calling_pid, pid) != 0 
 					|| (calling_pid != 0 && pid == 0))){
