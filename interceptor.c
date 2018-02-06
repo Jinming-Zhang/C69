@@ -602,7 +602,7 @@ int check_valid_stop_monitor(int syscall, int pid){
 
   // if pid is already monitored by the syscall
 	else if(check_pid_monitored(syscall, pid) == 0){
-		return --EINVAL;
+		return -EINVAL;
 	}
 	else{
 		return 0;
