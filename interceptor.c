@@ -604,9 +604,10 @@ int check_valid_stop_monitor(int syscall, int pid){
   // cases when calling process is not root
 	else if(calling_process != 0){
 		// if its parents 
+		if((pid_task(find_vpid(calling_process), PIDTYPE_PID) != NULL) && (pid_task(find_vpid(pid), PIDTYPE_PID) != NULL)){
 		if(check_pid_from_list(calling_process, pid) == 0){
 			return 0;
-		}
+		}}
 		return -EPERM;
 	}
 
