@@ -436,9 +436,11 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			if(check_valid_start_monitor(syscall, pid) != 0){
 				return check_valid_start_monitor(syscall, pid);
 			}else{
+
 	   		// perform START_MONITORING task
-	   		// to monitor all process
 				if(pid == 0){
+					// to moniter all processes, set the 'monitored' to 2
+					// and the list will be the process that not need to monitor
 					table[syscall].monitored = 2;
 					return 0;
 				}else{
@@ -451,6 +453,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 						table[syscall].monitored = 1;
 					}
 					return result;
+
 				}
 			}
 		}
@@ -463,22 +466,40 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 				(check_pid_from_list(calling_pid, pid) != 0 
 					|| (calling_pid != 0 && pid == 0))){
 				return -EPERM;
-			}else if(is_pid_monitered == 0 || is_syscall_intercepted == 0){
+			}else if((table[syscall].monitored == 1 && is_pid_monitered == 0) || is_syscall_intercepted == 0 || table[syscall].monitored == 0){
 				return -EINVAL;
 			}else{
 				// perform STOP_MONITORING task
-				spin_lock(&pidlist_lock);
-				result = del_pid_sysc(pid, syscall);
-				spin_unlock(&pidlist_lock);
-				if(result == 0){
-					table[syscall].listcount--;
-					if(table[syscall].monitored == 2){
-						table[syscall].monitored = 1;
-					}
-					return 0;
+
+				// if need to stop monitor all processes
+				if(pid == 0){
+						table[syscall].monitored = 0;
+						table[syscall].listcount = 0;
+						spin_lock(&pidlist_lock);
+						destroy_list(syscall);
+						spin_unlock(&pidlist_lock);
 				}
+				// stop monitoring a specific process
 				else{
-					return result;
+					// case 1, the syscall is monitoring all process
+					// and the list is a blacklist
+					if(table[syscall].monitored == 2){
+						result = add_pid_sysc(pid, syscall);
+						if(result != 0){
+							return result;
+						}else{
+							return 0;
+						}
+					}
+					// case 2, list of this syscall is monitored processes
+					spin_lock(&pidlist_lock);
+					result = del_pid_sysc(pid, syscall);
+					spin_unlock(&pidlist_lock);
+					if(result != 0){
+						return result;
+					}else{
+						return 0;
+					}
 				}
 			}
 		}
