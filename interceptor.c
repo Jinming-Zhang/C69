@@ -482,6 +482,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 						spin_lock(&pidlist_lock);
 						destroy_list(syscall);
 						spin_unlock(&pidlist_lock);
+						return 0;
 				}
 				// stop monitoring a specific process
 				else{
@@ -495,14 +496,16 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 							return 0;
 						}
 					}
-					// case 2, list of this syscall is monitored processes
-					spin_lock(&pidlist_lock);
-					result = del_pid_sysc(pid, syscall);
-					spin_unlock(&pidlist_lock);
-					if(result != 0){
-						return result;
-					}else{
-						return 0;
+					else{
+						// case 2, list of this syscall is monitored processes
+						spin_lock(&pidlist_lock);
+						result = del_pid_sysc(pid, syscall);
+						spin_unlock(&pidlist_lock);
+						if(result != 0){
+							return result;
+						}else{
+							return 0;
+						}
 					}
 				}
 			}
