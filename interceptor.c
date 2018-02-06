@@ -288,10 +288,10 @@ asmlinkage long interceptor(struct pt_regs reg) {
     // check if the calling process is in the monitored list
 	spin_lock(&pidlist_lock);
 	if(table[reg.ax].monitored == 2 && is_pid_monitored == 0){
-		log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+		log_message(pid, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
 	}
 	if (table[reg.ax].monitored != 2 && is_pid_monitored == 1){
-		log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+		log_message(pid, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
 	}
 	spin_unlock(&pidlist_lock);
 
