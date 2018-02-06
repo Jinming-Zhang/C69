@@ -418,7 +418,11 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 				table[syscall].monitored = 0;
 				table[syscall].listcount = 0;
 				table[syscall].f = NULL;
+
+				spin_lock(&pidlist_lock);
 				destroy_list(syscall);
+				spin_unlock(&pidlist_lock);
+
 				set_addr_ro((unsigned long) sys_call_table);
 				spin_unlock(&calltable_lock);
 
@@ -427,7 +431,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			}
 		}
 
-    // perfrom REQUEST_START_MONITORING
+    // perform REQUEST_START_MONITORING
 		else if(cmd == REQUEST_START_MONITORING){
 			if(check_valid_start_monitor(syscall, pid) != 0){
 				return check_valid_start_monitor(syscall, pid);
@@ -589,6 +593,7 @@ static int init_function(void) {
  */
 static void exit_function(void)
 {
+	int i;
 	spin_lock(&calltable_lock);
 	set_addr_rw((unsigned long) sys_call_table);
 	sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
@@ -597,6 +602,18 @@ static void exit_function(void)
 	orig_exit_group = NULL;
 	set_addr_ro((unsigned long) sys_call_table);
 	spin_unlock(&calltable_lock);
+
+	spin_lock(&pidlist_lock);
+	for(i = 0; i < NR_syscalls + 1; i++){
+		if(table[i].monitored != 0){
+			destroy_list(i);
+		}
+		table[i].f = NULL;
+		table[i].intercepted = 0;
+		table[i].monitored = 0;
+		table[i].listcount = 0;
+	}
+	spin_unlock(&pidlist_lock);
 }
 
 module_init(init_function);
