@@ -18,6 +18,7 @@ MODULE_LICENSE("GPL");
 
 // helper functions
 int valid_monitor(int cmd, int syscall, int pid);
+int valid_intercept(int cmd, int syscall);
 //----- System Call Table Stuff ------------------------------------
 /* Symbol that allows access to the kernel system call table */
 // a table contains all system calls
@@ -361,19 +362,15 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	}
 	// check and perform different commands
 	else{
-		calling_pid = current_uid();
 
    	// intercepting the syscall
 		if(cmd == REQUEST_SYSCALL_INTERCEPT){
 			is_syscall_intercepted = table[syscall].intercepted;
 			printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
 			// check if syscall is intercepted, permission
-			if(is_syscall_intercepted == 1){
-				printk(KERN_ALERT "syscall already intercepted\n");
-				return -EBUSY;
-			}else if(calling_pid != 0){
-				printk(KERN_ALERT "no root permission\n");
-				return -EPERM;
+			result = valid_intercept(cmd, syscall);
+			if(result != 0){
+				return result;
 			}else{
 		  	// perform INTERCEPT task
 				printk(KERN_ALERT "Intercepting syscall %d\n", syscall);
@@ -398,12 +395,9 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			is_syscall_intercepted = table[syscall].intercepted;
 			printk(KERN_ALERT "is syscall %d intercepted: %d\n", syscall, is_syscall_intercepted);
 		  // check if syscall has be intercepted, permission
-			if(is_syscall_intercepted == 0){
-				printk(KERN_ALERT "cant release syscall not intercepted\n");
-				return -EINVAL;
-			}else if(calling_pid != 0){
-				printk(KERN_ALERT "no root permission\n");
-				return -EPERM;
+			result = valid_intercept(cmd, syscall);
+			if(result != 0){
+				return result;
 			}else{
 			  // perform RELEASER task
 				printk(KERN_ALERT "releasing syscall %d\n", syscall);
@@ -413,8 +407,6 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 				set_addr_rw((unsigned long) sys_call_table);
 				sys_call_table[syscall] = table[syscall].f;
 				table[syscall].intercepted = 0;
-				table[syscall].monitored = 0;
-				table[syscall].listcount = 0;
 				table[syscall].f = NULL;
 
 				spin_lock(&pidlist_lock);
@@ -508,10 +500,27 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 
 	}
 }
-/**
- *
- */
-long (*orig_custom_syscall)(void);
+
+
+int valid_intercept(int cmd, int syscall){
+	if(current_uid() != 0){
+		return -EPERM;
+	}
+	else if(cmd == REQUEST_SYSCALL_INTERCEPT){
+		if(table[syscall].intercepted == 1){
+			return -EBUSY;
+		}else{
+			return 0;
+		}
+	}
+	else{
+		if(table[syscall].intercepted == 0){
+			return -EINVAL;
+		}else{
+			return 0;
+		}
+	}
+}
 
 int valid_monitor(int cmd, int syscall, int pid){
 	int is_pid_monitored;
@@ -582,6 +591,11 @@ int valid_monitor(int cmd, int syscall, int pid){
 	//
 }
 
+
+/**
+ *
+ */
+long (*orig_custom_syscall)(void);
 
 /**
  * Module initialization. 
