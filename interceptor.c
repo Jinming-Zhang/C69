@@ -553,6 +553,7 @@ int check_valid_start_monitor(int syscall, int pid){
   // cases when calling process is not root
 	else if(calling_process != 0){
 		// if its parents 
+		printk(KERN_ALERT "not root, checking relations\n");
 		if(check_pid_from_list(calling_process, pid) == 0){
 			printk(KERN_ALERT "error: runed by nonroot nonrelation process\n");
 			return 0;
