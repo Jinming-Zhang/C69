@@ -100,7 +100,7 @@ int do_nonroot(int syscall) {
 
 
 void test_syscall(int syscall) {
-	printf("testing nonvalid syscall\n")
+	printf("testing nonvalid syscall\n");
 	//clear_log();
 	do_intercept(syscall, 0);
 	do_intercept(syscall, -EBUSY);
