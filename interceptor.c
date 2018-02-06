@@ -462,7 +462,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
   	// REQUEST_STOP_MONITORING
 		else{
 			printk(KERN_ALERT "tring to STOP monitor process %d on syscall %d\n", pid, syscall);
-			printk(KERN_ALERT "status on syscall %d\nMonotored:%d, listcount: %d", syscall, table[syscall].monitored, table[syscall].listcount)
+			printk(KERN_ALERT "status on syscall %d\nMonotored:%d, listcount: %d", syscall, table[syscall].monitored, table[syscall].listcount);
 			is_syscall_intercepted = table[syscall].intercepted;
 		  printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
 			is_pid_monitered = check_pid_monitored(syscall, pid);
