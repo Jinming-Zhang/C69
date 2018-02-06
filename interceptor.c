@@ -18,6 +18,7 @@ MODULE_LICENSE("GPL");
 
 // helper functions
 int check_valid_start_monitor(int syscall, int pid);
+int check_valid_stop_monitor(int syscall, int pid);
 //----- System Call Table Stuff ------------------------------------
 /* Symbol that allows access to the kernel system call table */
 // a table contains all system calls
@@ -469,14 +470,10 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 		  printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
 			is_pid_monitered = check_pid_monitored(syscall, pid);
 			printk(KERN_ALERT "is pid %d monitored by the syscall: %d\n", pid, is_pid_monitered);
-			if(calling_pid !=0 && 
-				(check_pid_from_list(calling_pid, pid) != 0 
-					|| (calling_pid != 0 && pid == 0))){
-				printk(KERN_ALERT "no permission to STOP monitor process %d on syscall %d, run at %d.\n", pid, syscall, current_uid());
-				return -EPERM;
-			}else if((table[syscall].monitored == 1 && is_pid_monitered == 0) || is_syscall_intercepted == 0 || table[syscall].monitored == 0){
-				printk(KERN_ALERT "Invalid to STOP monitor process %d on syscall %d, run at %d.\n", pid, syscall, current_uid());
-				return -EINVAL;
+			// bug
+			result = check_valid_stop_monitor(syscall, pid);
+			if(result != 0){
+				return result;
 			}else{
 				// perform STOP_MONITORING task
 				printk(KERN_ALERT "valid STOP monitoring call, now monitor process %d on syscall %d, run at %d\n", pid, syscall, current_uid());
@@ -567,6 +564,50 @@ int check_valid_start_monitor(int syscall, int pid){
 	}
 }
 
+
+int check_valid_stop_monitor(int syscall, int pid){
+	int is_pid_monitered;
+	int is_syscall_intercepted;
+	int calling_process;
+	int is_exist;
+
+	// initialize variables
+	is_pid_monitered = check_pid_monitored(syscall, pid);
+	is_syscall_intercepted = table[syscall].intercepted;
+	calling_process = current_uid();
+	if(pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
+		is_exist = 1;
+	}else{
+		is_exist = 0;
+	}
+
+  // checking conditions-----------
+  // pid doesn't exist
+	if(pid < 0 || is_exist == 0){
+		return -EINVAL;
+	}
+
+  // syscall not intercepted
+	else if(is_syscall_intercepted == 0){
+		return -EINVAL;
+	}
+  // cases when calling process is not root
+	else if(calling_process != 0){
+		// if its parents 
+		if(check_pid_from_list(calling_process, pid) == 0){
+			return 0;
+		}
+		return -EPERM;
+	}
+
+  // if pid is already monitored by the syscall
+	else if(check_pid_monitored(syscall, pid) == 0){
+		return --EINVAL;
+	}
+	else{
+		return 0;
+	}
+}
 
 
 /**
