@@ -555,7 +555,7 @@ int check_valid_start_monitor(int syscall, int pid){
 		// if its parents 
 		printk(KERN_ALERT "not root, checking relations\n");
 		// bug 
-		if((pid_task(find_vpid(calling_process, PIDTYPE_PID)) != NULL) && (pid_task(find_vpid(pid), PIDTYPE_PID) != NULL)) {
+		if((pid_task(find_vpid(calling_process), PIDTYPE_PID) != NULL) && (pid_task(find_vpid(pid), PIDTYPE_PID) != NULL)) {
 			printk(KERN_ALERT "both process exist, no null pointer?\n");
 		if(check_pid_from_list(calling_process, pid) == 0){
 			printk(KERN_ALERT "error: runed by nonroot nonrelation process\n");
