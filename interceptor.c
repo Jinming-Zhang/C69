@@ -537,7 +537,7 @@ int check_valid_start_monitor(int syscall, int pid){
 	}else{
 		is_exist = 0;
 	}
-
+	printk(KERN_ALERT "start processing validation monitoring pid %d on syscall %d, run by %d\n", pid, syscall, current_uid());
   // checking conditions-----------
   // pid doesn't exist
 	if(pid < 0 || is_exist == 0){
