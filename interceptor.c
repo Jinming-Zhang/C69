@@ -350,7 +350,6 @@ asmlinkage long interceptor(struct pt_regs reg) {
  *   you might be holding, before you exit the function (including error cases!).  
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
-	pid_t calling_pid;
 	int result;
 	printk(KERN_ALERT "processing command %d on syscall %d at pid %d...\n", cmd, syscall, pid);
 
@@ -518,7 +517,7 @@ int valid_monitor(int cmd, int syscall, int pid){
 
 	// 
 	printk(KERN_ALERT "calling exist: %p, pid exist: %p", pid_task(find_vpid(current->pid), PIDTYPE_PID), pid_task(find_vpid(pid), PIDTYPE_PID));
-	if((pid_task(find_vpid(pid), PIDTYPE_PID) == NULL) || pid < 0){
+	if((pid != 0 && (pid_task(find_vpid(pid), PIDTYPE_PID) == NULL)) || pid < 0){
 		printk(KERN_ALERT "pid %d not exist or is less than 0\n", pid);
 		return -EINVAL;
 	}
