@@ -442,9 +442,10 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			printk(KERN_ALERT "tring to monitor process %d on syscall %d\n", pid, syscall);
 			printk(KERN_ALERT "status on syscall %d\nMonotored:%d, listcount: %d", syscall, table[syscall].monitored, table[syscall].listcount);
 			// bug
-			if(check_valid_start_monitor(syscall, pid) != 0){
+			result = valid_monitor(cmd, syscall, pid);
+			if(result != 0){
 				printk(KERN_ALERT "INVALID to monitor process %d on syscall %d, run at %d\n", pid, syscall, current_uid());
-				return check_valid_start_monitor(syscall, pid);
+				return result;
 			}else{
 				printk(KERN_ALERT "valid monitoring call, now monitor process %d on syscall %d, run at %d\n", pid, syscall, current_uid());
 	   		// perform START_MONITORING task
@@ -460,7 +461,6 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 					result = add_pid_sysc(pid, syscall);
 					spin_unlock(&pidlist_lock);
 					if(result == 0){
-						table[syscall].listcount++;
 						table[syscall].monitored = 1;
 					}
 					return result;
