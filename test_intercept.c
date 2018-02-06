@@ -56,12 +56,14 @@ void clear_log() {
 
 
 int do_intercept(int syscall, int status) {
+	printf("testing intercept\n");
 	test("%d intercept", syscall, vsyscall_arg(MY_CUSTOM_SYSCALL, 3, REQUEST_SYSCALL_INTERCEPT, syscall, getpid()) == status);
 	return 0;
 }
 
 
 int do_release(int syscall, int status) {
+	printf("testing release\n");
 	test("%d release", syscall, vsyscall_arg(MY_CUSTOM_SYSCALL, 3, REQUEST_SYSCALL_RELEASE, syscall, getpid()) == status);
 	return 0;
 }
@@ -71,7 +73,6 @@ int do_release(int syscall, int status) {
  * Run the tester as a non-root user, and basically run do_nonroot
  */
 void do_as_guest(const char *str, int args1, int args2) {
-
 	char cmd[1024];
 	char cmd2[1024];
 	char* exec[]={"bash", "-c", cmd2, NULL};
@@ -91,6 +92,7 @@ void do_as_guest(const char *str, int args1, int args2) {
 
 
 int do_nonroot(int syscall) {
+	printf("testing nonroot permission\n");
 	do_intercept(syscall, -EPERM);
 	do_release(syscall, -EPERM);
 	return 0;
@@ -98,6 +100,7 @@ int do_nonroot(int syscall) {
 
 
 void test_syscall(int syscall) {
+	printf("testing nonvalid syscall\n")
 	//clear_log();
 	do_intercept(syscall, 0);
 	do_intercept(syscall, -EBUSY);
