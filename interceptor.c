@@ -664,6 +664,7 @@ int check_valid_start_monitor(int syscall, int pid){
  * - Ensure synchronization as needed.
  */
 	static int init_function(void) {
+		int i;
 	// manipulating sys_call_table..................
 		spin_lock(&calltable_lock);
 		set_addr_rw((unsigned long) sys_call_table);
