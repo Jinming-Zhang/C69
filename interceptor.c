@@ -350,14 +350,12 @@ asmlinkage long interceptor(struct pt_regs reg) {
  *   you might be holding, before you exit the function (including error cases!).  
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
-	int is_syscall_intercepted;
 	pid_t calling_pid;
 	int result;
 	printk(KERN_ALERT "processing command %d on syscall %d at pid %d...\n", cmd, syscall, pid);
 
 	// check if syscall number is valid
 	if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL){
-		printk(KERN_ALERT "invalid syscall number\n");
 		return -EINVAL;
 	}
 	// check and perform different commands
@@ -365,16 +363,12 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 
    	// intercepting the syscall
 		if(cmd == REQUEST_SYSCALL_INTERCEPT){
-			is_syscall_intercepted = table[syscall].intercepted;
-			printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
 			// check if syscall is intercepted, permission
 			result = valid_intercept(cmd, syscall);
 			if(result != 0){
 				return result;
 			}else{
 		  	// perform INTERCEPT task
-				printk(KERN_ALERT "Intercepting syscall %d\n", syscall);
-
 			  // save the original system call and replace it with the interceptor
 				spin_lock(&calltable_lock);
 				set_addr_rw((unsigned long) sys_call_table);
@@ -383,8 +377,6 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 				table[syscall].intercepted = 1;
 				set_addr_ro((unsigned long) sys_call_table);
 				spin_unlock(&calltable_lock);
-
-				printk(KERN_ALERT "Intercepting syscall %d finished\n", syscall);
 			  // on successful, return 0
 				return 0;
 			}
@@ -392,15 +384,13 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 
 	  // RELEASE the syscall
 		else if(cmd == REQUEST_SYSCALL_RELEASE){
-			is_syscall_intercepted = table[syscall].intercepted;
-			printk(KERN_ALERT "is syscall %d intercepted: %d\n", syscall, is_syscall_intercepted);
 		  // check if syscall has be intercepted, permission
 			result = valid_intercept(cmd, syscall);
 			if(result != 0){
 				return result;
 			}else{
 			  // perform RELEASER task
-				printk(KERN_ALERT "releasing syscall %d\n", syscall);
+				//printk(KERN_ALERT "releasing syscall %d\n", syscall);
 
 		  	// retrieve the original system call
 				spin_lock(&calltable_lock);
@@ -416,7 +406,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 				set_addr_ro((unsigned long) sys_call_table);
 				spin_unlock(&calltable_lock);
 
-				printk(KERN_ALERT "releasing syscall %d finished\n", syscall);
+				//printk(KERN_ALERT "releasing syscall %d finished\n", syscall);
 				return 0;
 			}
 		}
@@ -439,6 +429,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 					printk(KERN_ALERT "monitor all process %d on syscall %dcomplete\n", pid, syscall);
 					return 0;
 				}else{
+					printk(KERN_ALERT "monitor pid %d on syscall %dcomplete\n", pid, syscall);
 					// to only monitor the provided pid
 					spin_lock(&pidlist_lock);
 					result = add_pid_sysc(pid, syscall);
