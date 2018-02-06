@@ -288,7 +288,12 @@ asmlinkage long interceptor(struct pt_regs reg) {
 
   // check if the calling process is in the monitored list
 	spin_lock(&pidlist_lock);
-	if(table[reg.ax].monitored == 2 || check_pid_monitored(reg.ax, calling_process) == 1){
+	if(table[reg.ax].monitored == 2){
+		if(check_pid_monitored(reg.ax, calling_process) == 0){
+			log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
+		}
+	}
+	else if (check_pid_monitored(reg.ax, calling_process) == 1){
 		log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
 		//printk(KERN_ALERT "logged the message, now calling the original syscall\n");
 	}
@@ -352,7 +357,7 @@ asmlinkage long interceptor(struct pt_regs reg) {
  */
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	int is_syscall_intercepted;
-	int is_pid_monitered;
+	int is_pid_monitored;
 	pid_t calling_pid;
 	int result;
 	printk(KERN_ALERT "processing command %d on syscall %d at pid %d...\n", cmd, syscall, pid);
@@ -369,7 +374,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
    	// intercepting the syscall
 		if(cmd == REQUEST_SYSCALL_INTERCEPT){
 			is_syscall_intercepted = table[syscall].intercepted;
-		  printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
+			printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
 			// check if syscall is intercepted, permission
 			if(is_syscall_intercepted == 1){
 				printk(KERN_ALERT "syscall already intercepted\n");
@@ -399,7 +404,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 	  // RELEASE the syscall
 		else if(cmd == REQUEST_SYSCALL_RELEASE){
 			is_syscall_intercepted = table[syscall].intercepted;
-	  	printk(KERN_ALERT "is syscall %d intercepted: %d\n", syscall, is_syscall_intercepted);
+			printk(KERN_ALERT "is syscall %d intercepted: %d\n", syscall, is_syscall_intercepted);
 		  // check if syscall has be intercepted, permission
 			if(is_syscall_intercepted == 0){
 				printk(KERN_ALERT "cant release syscall not intercepted\n");
@@ -468,11 +473,11 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			printk(KERN_ALERT "tring to STOP monitor process %d on syscall %d\n", pid, syscall);
 			printk(KERN_ALERT "status on syscall %d\nMonotored:%d, listcount: %d", syscall, table[syscall].monitored, table[syscall].listcount);
 			is_syscall_intercepted = table[syscall].intercepted;
-		  printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
-			is_pid_monitered = check_pid_monitored(syscall, pid);
-			printk(KERN_ALERT "is pid %d monitored by the syscall: %d\n", pid, is_pid_monitered);
+			printk(KERN_ALERT "is syscall intercepted: %d\n", is_syscall_intercepted);
+			is_pid_monitored = check_pid_monitored(syscall, pid);
+			printk(KERN_ALERT "is pid %d monitored by the syscall: %d\n", pid, is_pid_monitored);
 			// bug
-			result = check_valid_stop_monitor(syscall, pid);
+			result = valid_monitor(cmd, syscall, pid);
 			if(result != 0){
 				return result;
 			}else{
@@ -480,12 +485,12 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 				printk(KERN_ALERT "valid STOP monitoring call, now monitor process %d on syscall %d, run at %d\n", pid, syscall, current_uid());
 				// if need to stop monitor all processes
 				if(pid == 0){
-						table[syscall].monitored = 0;
-						table[syscall].listcount = 0;
-						spin_lock(&pidlist_lock);
-						destroy_list(syscall);
-						spin_unlock(&pidlist_lock);
-						return 0;
+					table[syscall].monitored = 0;
+					table[syscall].listcount = 0;
+					spin_lock(&pidlist_lock);
+					destroy_list(syscall);
+					spin_unlock(&pidlist_lock);
+					return 0;
 				}
 				// stop monitoring a specific process
 				else{
@@ -523,13 +528,13 @@ long (*orig_custom_syscall)(void);
 
 
 int check_valid_start_monitor(int syscall, int pid){
-	int is_pid_monitered;
+	int is_pid_monitored;
 	int is_syscall_intercepted;
 	int calling_process;
 	int is_exist;
-  printk(KERN_ALERT "validation monitoring pid %d on syscall %d, run by %d\n", pid, syscall, current_uid());
+	printk(KERN_ALERT "validation monitoring pid %d on syscall %d, run by %d\n", pid, syscall, current_uid());
 	// initialize variables
-	is_pid_monitered = check_pid_monitored(syscall, pid);
+	is_pid_monitored = check_pid_monitored(syscall, pid);
 	is_syscall_intercepted = table[syscall].intercepted;
 	calling_process = current_uid();
 	if(pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
@@ -557,68 +562,90 @@ int check_valid_start_monitor(int syscall, int pid){
 		// bug 
 		if((pid_task(find_vpid(calling_process), PIDTYPE_PID) != NULL) && (pid_task(find_vpid(pid), PIDTYPE_PID) != NULL)) {
 			printk(KERN_ALERT "both process exist, no null pointer?\n");
-		if(check_pid_from_list(calling_process, pid) == 0){
-			printk(KERN_ALERT "error: runed by nonroot nonrelation process\n");
-			return 0;
-		}}
-		return -EPERM;
-	}
+			if(check_pid_from_list(calling_process, pid) == 0){
+				printk(KERN_ALERT "error: runed by nonroot nonrelation process\n");
+				return 0;
+			}}
+			return -EPERM;
+		}
 
   // if pid is already monitored by the syscall
-	else if(check_pid_monitored(syscall, pid) == 1 || table[syscall].monitored == 2){
-		printk(KERN_ALERT "error: pid %d already monitored by syscall %d\n", pid, syscall);
-		return -EBUSY;
-	}
-	else{
-		return 0;
-	}
-}
-
-
-int check_valid_stop_monitor(int syscall, int pid){
-	int is_pid_monitered;
-	int is_syscall_intercepted;
-	int calling_process;
-	int is_exist;
-
-	// initialize variables
-	is_pid_monitered = check_pid_monitored(syscall, pid);
-	is_syscall_intercepted = table[syscall].intercepted;
-	calling_process = current_uid();
-	if(pid_task(find_vpid(pid), PIDTYPE_PID) != NULL){
-		is_exist = 1;
-	}else{
-		is_exist = 0;
-	}
-
-  // checking conditions-----------
-  // pid doesn't exist
-	if(pid < 0 || is_exist == 0){
-		return -EINVAL;
-	}
-
-  // syscall not intercepted
-	else if(is_syscall_intercepted == 0){
-		return -EINVAL;
-	}
-  // cases when calling process is not root
-	else if(calling_process != 0){
-		// if its parents 
-		if((pid_task(find_vpid(calling_process), PIDTYPE_PID) != NULL) && (pid_task(find_vpid(pid), PIDTYPE_PID) != NULL)){
-		if(check_pid_from_list(calling_process, pid) == 0){
+		else if(check_pid_monitored(syscall, pid) == 1 || table[syscall].monitored == 2){
+			printk(KERN_ALERT "error: pid %d already monitored by syscall %d\n", pid, syscall);
+			return -EBUSY;
+		}
+		else{
 			return 0;
-		}}
-		return -EPERM;
+		}
 	}
 
-  // if pid is already monitored by the syscall
-	else if(check_pid_monitored(syscall, pid) == 0){
-		return -EINVAL;
+
+	int valid_monitor(int cmd, int syscall, int pid){
+		int is_pid_monitored;
+
+	// 
+		if((pid_task(find_vpid(pid), PIDTYPE_PID) == NULL) || pid < 0){
+			printk(KERN_ALERT "pid %d not exist or is less than 0\n", pid);
+			return -EINVAL;
+		}
+	// then check if syscall is intercepted
+		else if(table[syscall].intercepted == 0){
+			printk(KERN_ALERT "syscall %d not intercepted\n", syscall);
+			return -EINVAL;
+		}
+	// then check the permission if caller is not root
+		else if(current_uid() != 0){
+			printk(KERN_ALERT "not runed by root, now checking relation\n");
+		//
+			if(check_pid_from_list(current_uid(), pid) != 1){
+				printk(KERN_ALERT "no relation between two process, no permission\n");
+				return -EPERM;
+			}else if(pid == 0){
+				printk(KERN_ALERT "no at root to monitor/stop all, no permission\n");
+				return -EPERM;
+			}else{
+			// check correctness of context
+				is_pid_monitored = check_pid_monitored(syscall, pid);
+			// if its START command
+				if(cmd == REQUEST_START_MONITORING){
+					if(is_pid_monitored == 1){
+						return -EBUSY;
+					}else{
+						return 0;
+					}
+				}
+			// else is STOP command
+				else{
+					if((table[syscall].monitored != 2) && is_pid_monitored == 0){
+						return -EINVAL;
+					}else{
+						return 0;
+					}
+				}
+			}
+		}
+		else{
+			// check correctness of context
+				is_pid_monitored = check_pid_monitored(syscall, pid);
+			// if its START command
+				if(cmd == REQUEST_START_MONITORING){
+					if(is_pid_monitored == 1){
+						return -EBUSY;
+					}else{
+						return 0;
+					}
+				}
+			// else is STOP command
+				else{
+					if((table[syscall].monitored != 2) && is_pid_monitored == 0){
+						return -EINVAL;
+					}else{
+						return 0;
+					}
+				}
+		}
+	//
 	}
-	else{
-		return 0;
-	}
-}
 
 
 /**
@@ -636,24 +663,18 @@ int check_valid_stop_monitor(int syscall, int pid){
  *   where some_list is a "struct list_head". 
  * - Ensure synchronization as needed.
  */
-static int init_function(void) {
-	int i;
-	printk(KERN_ALERT "INSTALLING MODLE...............................\n");
-	printk(KERN_ALERT "Changing syscall table...\n");
+	static int init_function(void) {
 	// manipulating sys_call_table..................
-	spin_lock(&calltable_lock);
-	set_addr_rw((unsigned long) sys_call_table);
-	printk(KERN_ALERT "Replacing MY_CUSTOM_SYSCALL...\n");
+		spin_lock(&calltable_lock);
+		set_addr_rw((unsigned long) sys_call_table);
 	orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];//?
 	sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;
-	printk(KERN_ALERT "Replacing my_exit_group...\n");
 	orig_exit_group = sys_call_table[__NR_exit_group];
 	sys_call_table[__NR_exit_group] = my_exit_group;
 	set_addr_ro((unsigned long) sys_call_table);
 	spin_unlock(&calltable_lock);
 
-	// allocate spaces for this module (table)
-	printk(KERN_ALERT "Now initialize spaces...\n");
+	// initialize values for this module (table)
 	for(i = 0; i < NR_syscalls + 1; i++){
 		table[i].f = NULL;
 		table[i].intercepted = 0;
@@ -661,7 +682,7 @@ static int init_function(void) {
 		table[i].listcount = 0;
 		INIT_LIST_HEAD(&(table[i].my_list));
 	}
-	printk(KERN_ALERT "Installing returned.............................%d\n", table[3].listcount);
+	printk(KERN_ALERT "Installing finished.............................\n");;
 
 	return 0;
 }
