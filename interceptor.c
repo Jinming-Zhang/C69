@@ -291,6 +291,9 @@ asmlinkage long interceptor(struct pt_regs reg) {
 		log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
 		printk(KERN_ALERT "logged the message, now calling the original syscall\n");
 	}
+	else{
+		printk(KERN_ALERT "pid not monitored, now calling the original syscall\n");
+	}
 	spin_unlock(&pidlist_lock);
 
   // call the original system call
@@ -382,8 +385,8 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 				spin_lock(&calltable_lock);
 				set_addr_rw((unsigned long) sys_call_table);
 				table[syscall].f = sys_call_table[syscall];
-				table[syscall].intercepted = 1;
 				sys_call_table[syscall] = interceptor;
+				table[syscall].intercepted = 1;
 				set_addr_ro((unsigned long) sys_call_table);
 				spin_unlock(&calltable_lock);
 
@@ -411,6 +414,8 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 				set_addr_rw((unsigned long) sys_call_table);
 				sys_call_table[syscall] = table[syscall].f;
 				table[syscall].intercepted = 0;
+				table[syscall].monitored = 0;
+				table[syscall].listcount = 0;
 				table[syscall].f = NULL;
 				destroy_list(syscall);
 				set_addr_ro((unsigned long) sys_call_table);
