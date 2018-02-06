@@ -220,7 +220,7 @@ static int check_pid_monitored(int sysc, pid_t pid) {
 
 	struct list_head *i;
 	struct pid_list *ple;
-	printk(KERN_ALERT "Check_pid_monitored pid: %d  sysc: %d--\n", pid, sysc);
+	//printk(KERN_ALERT "Check_pid_monitored pid: %d  sysc: %d--\n", pid, sysc);
 	list_for_each(i, &(table[sysc].my_list)) {
 
 		ple=list_entry(i, struct pid_list, list);
@@ -283,17 +283,17 @@ void my_exit_group(int status)
 asmlinkage long interceptor(struct pt_regs reg) {
 	pid_t calling_process;
 	calling_process = current->pid;
-	printk(KERN_ALERT "entered interceptor for syscall %lx\n", reg.ax);
+	//printk(KERN_ALERT "entered interceptor for syscall %lx\n", reg.ax);
 
   // check if the calling process is in the monitored list
 	spin_lock(&pidlist_lock);
 	if(table[reg.ax].monitored == 2 || check_pid_monitored(reg.ax, calling_process) == 1){
 		log_message(calling_process, reg.ax, reg.bx, reg.cx, reg.dx, reg.si, reg.di, reg.bp);
-		printk(KERN_ALERT "logged the message, now calling the original syscall\n");
+		//printk(KERN_ALERT "logged the message, now calling the original syscall\n");
 	}
-	else{
-		printk(KERN_ALERT "pid not monitored, now calling the original syscall\n");
-	}
+	//else{
+		//printk(KERN_ALERT "pid not monitored, now calling the original syscall\n");
+	//}
 	spin_unlock(&pidlist_lock);
 
   // call the original system call
