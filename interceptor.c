@@ -436,6 +436,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 		else if(cmd == REQUEST_START_MONITORING){
 			printk(KERN_ALERT "tring to monitor process %d on syscall %d\n", pid, syscall);
 			printk(KERN_ALERT "status on syscall %d\nMonotored:%d, listcount: %d", syscall, table[syscall].monitored, table[syscall].listcount);
+			// bug
 			if(check_valid_start_monitor(syscall, pid) != 0){
 				printk(KERN_ALERT "INVALID to monitor process %d on syscall %d, run at %d\n", pid, syscall, current_uid());
 				return check_valid_start_monitor(syscall, pid);
@@ -509,9 +510,10 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 							return 0;
 						}
 					}
-				}
+				}	
 			}
 		}
+
 	}
 }
 /**
@@ -525,7 +527,7 @@ int check_valid_start_monitor(int syscall, int pid){
 	int is_syscall_intercepted;
 	int calling_process;
 	int is_exist;
-
+  printk(KERN_ALERT "validation monitoring pid %d on syscall %d, run by %d\n", pid, syscall, current_uid());
 	// initialize variables
 	is_pid_monitered = check_pid_monitored(syscall, pid);
 	is_syscall_intercepted = table[syscall].intercepted;
@@ -539,17 +541,20 @@ int check_valid_start_monitor(int syscall, int pid){
   // checking conditions-----------
   // pid doesn't exist
 	if(pid < 0 || is_exist == 0){
+		printk(KERN_ALERT "error: pid %d donest exist\n", pid);
 		return -EINVAL;
 	}
 
   // syscall not intercepted
 	else if(is_syscall_intercepted == 0){
+		printk(KERN_ALERT "error: syscall %d not intercepted\n", syscall);
 		return -EINVAL;
 	}
   // cases when calling process is not root
 	else if(calling_process != 0){
 		// if its parents 
 		if(check_pid_from_list(calling_process, pid) == 0){
+			printk(KERN_ALERT "error: runed by nonroot nonrelation process\n");
 			return 0;
 		}
 		return -EPERM;
@@ -557,6 +562,7 @@ int check_valid_start_monitor(int syscall, int pid){
 
   // if pid is already monitored by the syscall
 	else if(check_pid_monitored(syscall, pid) == 1 || table[syscall].monitored == 2){
+		printk(KERN_ALERT "error: pid %d already monitored by syscall %d\n", pid, syscall);
 		return -EBUSY;
 	}
 	else{
