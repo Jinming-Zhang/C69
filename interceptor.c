@@ -436,14 +436,16 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 			printk(KERN_ALERT "tring to monitor process %d on syscall %d\n", pid, syscall);
 			printk(KERN_ALERT "status on syscall %d\nMonotored:%d, listcount: %d", syscall, table[syscall].monitored, table[syscall].listcount);
 			if(check_valid_start_monitor(syscall, pid) != 0){
+				printk(KERN_ALERT "INVALID to monitor process %d on syscall %d, run at %d\n", pid, syscall, current_uid());
 				return check_valid_start_monitor(syscall, pid);
 			}else{
-
+				printk(KERN_ALERT "valid monitoring call, now monitor process %d on syscall %d, run at %d\n", pid, syscall, current_uid());
 	   		// perform START_MONITORING task
 				if(pid == 0){
 					// to moniter all processes, set the 'monitored' to 2
 					// and the list will be the process that not need to monitor
 					table[syscall].monitored = 2;
+					printk(KERN_ALERT "monitor process %d on syscall %dcomplete\n", pid, syscall);
 					return 0;
 				}else{
 					// to only monitor the provided pid
