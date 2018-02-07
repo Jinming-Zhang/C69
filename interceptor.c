@@ -531,11 +531,12 @@ int valid_monitor(int cmd, int syscall, int pid){
 		printk(KERN_ALERT "not runed by root, now checking relation\n");
 		//  
 		printk(KERN_ALERT "calling exist: %p, pid exist: %p", pid_task(find_vpid(current->pid), PIDTYPE_PID), pid_task(find_vpid(pid), PIDTYPE_PID));
-		if(check_pid_from_list(current->pid, pid) != 0){
-			printk(KERN_ALERT "no relation between two process, no permission\n");
-			return -EPERM;
-		}else if(pid == 0){
+		if(pid == 0){
 			printk(KERN_ALERT "no at root to monitor/stop all, no permission\n");
+			return -EPERM;
+		}
+		else if(check_pid_from_list(current->pid, pid) != 0){
+			printk(KERN_ALERT "no relation between two process, no permission\n");
 			return -EPERM;
 		}else{
 			// check correctness of context
