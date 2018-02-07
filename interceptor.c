@@ -447,7 +447,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
       // validate inputs
       result = valid_monitor(cmd, syscall, pid);
       if(result != 0){
-	return result;
+	  return result;
       }else{
 	// perform STOP_MONITORING task
 	if(pid == 0){
@@ -647,6 +647,7 @@ static int init_function(void) {
 static void exit_function(void)
 {
   int i;
+  // retrieve origin custom_syscall and exit syscall
   spin_lock(&calltable_lock);
   set_addr_rw((unsigned long) sys_call_table);
   sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
@@ -656,15 +657,12 @@ static void exit_function(void)
   set_addr_ro((unsigned long) sys_call_table);
   spin_unlock(&calltable_lock);
 
+  // free all spaces used to monitor the processes
   spin_lock(&pidlist_lock);
   for(i = 0; i < NR_syscalls + 1; i++){
     if(table[i].monitored != 0){
       destroy_list(i);
     }
-    table[i].f = NULL;
-    table[i].intercepted = 0;
-    table[i].monitored = 0;
-    table[i].listcount = 0;
   }
   spin_unlock(&pidlist_lock);
 }
