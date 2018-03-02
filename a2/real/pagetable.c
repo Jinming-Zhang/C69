@@ -7,10 +7,10 @@
 pgdir_entry_t pgdir[PTRS_PER_PGDIR]; 
 
 // helper functions
-int isValid(unsigned stat);
-int isDirt(unsigned stat);
-int isRef(unsigned stat);
-int isOnSwap(unsigned stat);
+int isValid(unsigned int);
+int isDirt(unsigned int);
+int isRef(unsigned int);
+int isOnSwap(unsigned int);
 // Counters for various events.
 // Your code must increment these when the related events occur.
 int hit_count = 0;
@@ -29,30 +29,34 @@ int evict_dirty_count = 0;
  * Counters for evictions should be updated appropriately in this function.
  */
 int allocate_frame(pgtbl_entry_t *p) {
-	int i;
-	int frame = -1;
-	for(i = 0; i < memsize; i++) {
-		if(!coremap[i].in_use) {
-			frame = i;
-			break;
-		}
-	}
-	if(frame == -1) { // Didn't find a free page.
-		// Call replacement algorithm's evict function to select victim
-		frame = evict_fcn();
+  int i;
+  int frame = -1;
+  for(i = 0; i < memsize; i++) {
+    if(!coremap[i].in_use) {
+      frame = i;
+      break;
+    }
+  }
+  if(frame == -1) { // Didn't find a free page.
+    // Call replacement algorithm's evict function to select victim
+    frame = evict_fcn();
 
-		// All frames were in use, so victim frame must hold some page
-		// Write victim page to swap, if needed, and update pagetable
-		// IMPLEMENTATION NEEDED
+    // All frames were in use, so victim frame must hold some page
+    // Write victim page to swap, if needed, and update pagetable
+    // IMPLEMENTATION NEEDED
 
+    // 1. retrive the pte that points to this victim frame
+    pgtbl_entry_t *old_pte = coremap[frame].pte;
+    // 2. update the status of the old pte
+    old_pte->swap_off = swap_pageout(old_pte->frame >> PAGE_SHIFT, old_pte->swap_off);
+    old_pte->frame = old_pte->frame & ~(PG_VALID) & ~(PG_ONSWAP);
+  }
 
-	}
+  // Record information for virtual page that will now be stored in frame
+  coremap[frame].in_use = 1;
+  coremap[frame].pte = p;
 
-	// Record information for virtual page that will now be stored in frame
-	coremap[frame].in_use = 1;
-	coremap[frame].pte = p;
-
-	return frame;
+  return frame;
 }
 
 /*
@@ -66,38 +70,38 @@ int allocate_frame(pgtbl_entry_t *p) {
  * need to be allocated and initialized as part of process creation.
  */
 void init_pagetable() {
-	int i;
-	// Set all entries in top-level pagetable to 0, which ensures valid
-	// bits are all 0 initially.
-	for (i=0; i < PTRS_PER_PGDIR; i++) {
-		pgdir[i].pde = 0;
-	}
+  int i;
+  // Set all entries in top-level pagetable to 0, which ensures valid
+  // bits are all 0 initially.
+  for (i=0; i < PTRS_PER_PGDIR; i++) {
+    pgdir[i].pde = 0;
+  }
 }
 
 // For simulation, we get second-level pagetables from ordinary memory
 pgdir_entry_t init_second_level() {
-	int i;
-	pgdir_entry_t new_entry;
-	pgtbl_entry_t *pgtbl;
+  int i;
+  pgdir_entry_t new_entry;
+  pgtbl_entry_t *pgtbl;
 
-	// Allocating aligned memory ensures the low bits in the pointer must
-	// be zero, so we can use them to store our status bits, like PG_VALID
-	if (posix_memalign((void **)&pgtbl, PAGE_SIZE, 
-			   PTRS_PER_PGTBL*sizeof(pgtbl_entry_t)) != 0) {
-		perror("Failed to allocate aligned memory for page table");
-		exit(1);
-	}
+  // Allocating aligned memory ensures the low bits in the pointer must
+  // be zero, so we can use them to store our status bits, like PG_VALID
+  if (posix_memalign((void **)&pgtbl, PAGE_SIZE, 
+		     PTRS_PER_PGTBL*sizeof(pgtbl_entry_t)) != 0) {
+    perror("Failed to allocate aligned memory for page table");
+    exit(1);
+  }
 
-	// Initialize all entries in second-level pagetable
-	for (i=0; i < PTRS_PER_PGTBL; i++) {
-		pgtbl[i].frame = 0; // sets all bits, including valid, to zero
-		pgtbl[i].swap_off = INVALID_SWAP;
-	}
+  // Initialize all entries in second-level pagetable
+  for (i=0; i < PTRS_PER_PGTBL; i++) {
+    pgtbl[i].frame = 0; // sets all bits, including valid, to zero
+    pgtbl[i].swap_off = INVALID_SWAP;
+  }
 
-	// Mark the new page directory entry as valid
-	new_entry.pde = (uintptr_t)pgtbl | PG_VALID;
+  // Mark the new page directory entry as valid
+  new_entry.pde = (uintptr_t)pgtbl | PG_VALID;
 
-	return new_entry;
+  return new_entry;
 }
 
 /* 
@@ -111,15 +115,15 @@ pgdir_entry_t init_second_level() {
  *
  */
 void init_frame(int frame, addr_t vaddr) {
-	// Calculate pointer to start of frame in (simulated) physical memory
-	char *mem_ptr = &physmem[frame*SIMPAGESIZE];
-	// Calculate pointer to location in page where we keep the vaddr
-        addr_t *vaddr_ptr = (addr_t *)(mem_ptr + sizeof(int));
+  // Calculate pointer to start of frame in (simulated) physical memory
+  char *mem_ptr = &physmem[frame*SIMPAGESIZE];
+  // Calculate pointer to location in page where we keep the vaddr
+  addr_t *vaddr_ptr = (addr_t *)(mem_ptr + sizeof(int));
 	
-	memset(mem_ptr, 0, SIMPAGESIZE); // zero-fill the frame
-	*vaddr_ptr = vaddr;             // record the vaddr for error checking
+  memset(mem_ptr, 0, SIMPAGESIZE); // zero-fill the frame
+  *vaddr_ptr = vaddr;             // record the vaddr for error checking
 
-	return;
+  return;
 }
 
 /*
@@ -136,123 +140,135 @@ void init_frame(int frame, addr_t vaddr) {
  * this function.
  */
 char *find_physpage(addr_t vaddr, char type) {
-	pgtbl_entry_t *p=NULL; // pointer to the full page table entry for vaddr
-	unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
-    printf("finding pysical space for %x\n", vaddr);
-	// IMPLEMENTATION NEEDED
-	// Use top-level page directory to get pointer to 2nd-level page table
-
-	// get the pointer of page talbe in pgdir_entry_t struct
-    pgtbl_entry_t *head = pgdir[idx].pde;
+  pgtbl_entry_t *p=NULL; // pointer to the full page table entry for vaddr
+  unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
+  printf("finding pysical space for %lu\n", vaddr);
+  // IMPLEMENTATION NEEDED
+  // Use top-level page directory to get pointer to 2nd-level page table
+  printf("geting the pte head from the pde \n");
+  // get the pointer of page talbe in pgdir_entry_t struct
+  pgtbl_entry_t *head = (pgtbl_entry_t *) pgdir[idx].pde;
   
-	// Use vaddr to get index into 2nd-level page table and initialize 'p'
-    idx = PGTBL_INDEX(vaddr);
-    //p = head[idx];
-    p = &head[idx];
-
-	// Check if p is valid or not, on swap or not, and handle appropriately
-	unsigned int stat = p->frame;
-	// if the pte is invalid and not on swap
-	if (!isValid(stat) && !isOnSwap(stat)){
-        // find a pysical frame that is not in use
-        p->fram = allocate_frame(p) << PAGE_SHIFT;
-	}
-	// if the pte is valid and on swap
-    else if(isValid(stat) && isOnSwap(stat)){
-        // then get the frame number on the physical memory
-        int frame_number = p->frame >> PAGE_SHIFT;
+  printf("geting the pte\n");
+  // Use vaddr to get index into 2nd-level page table and initialize 'p'
+  idx = PGTBL_INDEX(vaddr);
+  p = &(head[idx]);
+  printf("geting pte status\n");
+  // p represent the pte of the vadddr now------------------------------
+  // Check if p is valid or not, on swap or not, and handle appropriately
+  unsigned int pte = p->frame;
+  printf("checking status\n");
+  // if the pte is invalid
+  if (!isValid(pte)){
+    miss_count++;
+    // find a frame space on physical memory for this page
+    // set p->frame to the new frame number shifted left for 12 bits
+    p->frame = allocate_frame(p) << PAGE_SHIFT;
+    // if its on swap
+    if(isOnSwap(pte)){
+      // write the frame stored in swap into the new frame on memory
+      swap_pagein(p->frame >> PAGE_SHIFT, p->swap_off);
     }
-    // if the pte is valid and not on swap -> is on pysical memory
+    // not on swap
     else{
-
+      // init the frame content as default
+      init_frame(p->frame >> PAGE_SHIFT, vaddr);
     }
+  }
+  // if the pte is valid -> content is on physical memory
+  else{
+    hit_count++;
+  }
+  
+  // Make sure that p is marked valid and referenced. Also mark it
+  // dirty if the access type indicates that the page will be written to.
+  // updates
+  p->frame = p->frame | PG_VALID | PG_REF;// use bitwise 'or' to set a bit to 1
+  ref_count++;
+  if (type == 'S' || type == 'M'){
+    p->frame = p->frame | PG_DIRTY;
+  }
 
+  // Call replacement algorithm's ref_fcn for this page
+  ref_fcn(p);
 
-	// Make sure that p is marked valid and referenced. Also mark it
-	// dirty if the access type indicates that the page will be written to.
-
-
-
-	// Call replacement algorithm's ref_fcn for this page
-	ref_fcn(p);
-
-	// Return pointer into (simulated) physical memory at start of frame
-	return  &physmem[(p->frame >> PAGE_SHIFT)*SIMPAGESIZE];
+  // Return pointer into (simulated) physical memory at start of frame
+  return  &physmem[(p->frame >> PAGE_SHIFT)*SIMPAGESIZE];
 }
 
 void print_pagetbl(pgtbl_entry_t *pgtbl) {
-	int i;
-	int first_invalid, last_invalid;
-	first_invalid = last_invalid = -1;
+  int i;
+  int first_invalid, last_invalid;
+  first_invalid = last_invalid = -1;
 
-	for (i=0; i < PTRS_PER_PGTBL; i++) {
-		if (!(pgtbl[i].frame & PG_VALID) && 
-		    !(pgtbl[i].frame & PG_ONSWAP)) {
-			if (first_invalid == -1) {
-				first_invalid = i;
-			}
-			last_invalid = i;
-		} else {
-			if (first_invalid != -1) {
-				printf("\t[%d] - [%d]: INVALID\n",
-				       first_invalid, last_invalid);
-				first_invalid = last_invalid = -1;
-			}
-			printf("\t[%d]: ",i);
-			if (pgtbl[i].frame & PG_VALID) {
-				printf("VALID, ");
-				if (pgtbl[i].frame & PG_DIRTY) {
-					printf("DIRTY, ");
-				}
-				printf("in frame %d\n",pgtbl[i].frame >> PAGE_SHIFT);
-			} else {
-				assert(pgtbl[i].frame & PG_ONSWAP);
-				printf("ONSWAP, at offset %lu\n",pgtbl[i].swap_off);
-			}			
-		}
+  for (i=0; i < PTRS_PER_PGTBL; i++) {
+    if (!(pgtbl[i].frame & PG_VALID) && 
+	!(pgtbl[i].frame & PG_ONSWAP)) {
+      if (first_invalid == -1) {
+	first_invalid = i;
+      }
+      last_invalid = i;
+    } else {
+      if (first_invalid != -1) {
+	printf("\t[%d] - [%d]: INVALID\n",
+	       first_invalid, last_invalid);
+	first_invalid = last_invalid = -1;
+      }
+      printf("\t[%d]: ",i);
+      if (pgtbl[i].frame & PG_VALID) {
+	printf("VALID, ");
+	if (pgtbl[i].frame & PG_DIRTY) {
+	  printf("DIRTY, ");
 	}
-	if (first_invalid != -1) {
-		printf("\t[%d] - [%d]: INVALID\n", first_invalid, last_invalid);
-		first_invalid = last_invalid = -1;
-	}
+	printf("in frame %d\n",pgtbl[i].frame >> PAGE_SHIFT);
+      } else {
+	assert(pgtbl[i].frame & PG_ONSWAP);
+	printf("ONSWAP, at offset %lu\n",pgtbl[i].swap_off);
+      }			
+    }
+  }
+  if (first_invalid != -1) {
+    printf("\t[%d] - [%d]: INVALID\n", first_invalid, last_invalid);
+    first_invalid = last_invalid = -1;
+  }
 }
 
 void print_pagedirectory() {
-	int i; // index into pgdir
-	int first_invalid,last_invalid;
+  int i; // index into pgdir
+  int first_invalid,last_invalid;
+  first_invalid = last_invalid = -1;
+
+  pgtbl_entry_t *pgtbl;
+
+  for (i=0; i < PTRS_PER_PGDIR; i++) {
+    if (!(pgdir[i].pde & PG_VALID)) {
+      if (first_invalid == -1) {
+	first_invalid = i;
+      }
+      last_invalid = i;
+    } else {
+      if (first_invalid != -1) {
+	printf("[%d]: INVALID\n  to\n[%d]: INVALID\n", 
+	       first_invalid, last_invalid);
 	first_invalid = last_invalid = -1;
-
-	pgtbl_entry_t *pgtbl;
-
-	for (i=0; i < PTRS_PER_PGDIR; i++) {
-		if (!(pgdir[i].pde & PG_VALID)) {
-			if (first_invalid == -1) {
-				first_invalid = i;
-			}
-			last_invalid = i;
-		} else {
-			if (first_invalid != -1) {
-				printf("[%d]: INVALID\n  to\n[%d]: INVALID\n", 
-				       first_invalid, last_invalid);
-				first_invalid = last_invalid = -1;
-			}
-			pgtbl = (pgtbl_entry_t *)(pgdir[i].pde & PAGE_MASK);
-			printf("[%d]: %p\n",i, pgtbl);
-			print_pagetbl(pgtbl);
-		}
-	}
+      }
+      pgtbl = (pgtbl_entry_t *)(pgdir[i].pde & PAGE_MASK);
+      printf("[%d]: %p\n",i, pgtbl);
+      print_pagetbl(pgtbl);
+    }
+  }
 }
 
 
-int isValid(unsigned stat){
-    return stat & PG_VALID;
+int isValid(unsigned int stat){
+  return stat & PG_VALID;
 }
-int isDirt(unsigned stat){
-	 return stat & PG_DIRTY;
+int isDirt(unsigned int stat){
+  return stat & PG_DIRTY;
 }
-int isRef(unsigned stat){
-	 return stat & PG_REF;
+int isRef(unsigned int stat){
+  return stat & PG_REF;
 }
-int isOnSwap(unsigned stat){
-	 return stat & PG_ONSWAP;
+int isOnSwap(unsigned int stat){
+  return stat & PG_ONSWAP;
 }
