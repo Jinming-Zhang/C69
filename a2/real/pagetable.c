@@ -6,6 +6,11 @@
 // The top-level page table (also known as the 'page directory')
 pgdir_entry_t pgdir[PTRS_PER_PGDIR]; 
 
+// helper functions
+int isValid(unsigned stat);
+int isDirt(unsigned stat);
+int isRef(unsigned stat);
+int isOnSwap(unsigned stat);
 // Counters for various events.
 // Your code must increment these when the related events occur.
 int hit_count = 0;
@@ -133,18 +138,34 @@ void init_frame(int frame, addr_t vaddr) {
 char *find_physpage(addr_t vaddr, char type) {
 	pgtbl_entry_t *p=NULL; // pointer to the full page table entry for vaddr
 	unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
-
+    printf("finding pysical space for %x\n", vaddr);
 	// IMPLEMENTATION NEEDED
 	// Use top-level page directory to get pointer to 2nd-level page table
-	(void)idx; // To keep compiler happy - remove when you have a real use.
 
-
+	// get the pointer of page talbe in pgdir_entry_t struct
+    pgtbl_entry_t *head = pgdir[idx].pde;
+  
 	// Use vaddr to get index into 2nd-level page table and initialize 'p'
-
-
+    idx = PGTBL_INDEX(vaddr);
+    //p = head[idx];
+    p = &head[idx];
 
 	// Check if p is valid or not, on swap or not, and handle appropriately
+	unsigned int stat = p->frame;
+	// if the pte is invalid and not on swap
+	if (!isValid(stat) && !isOnSwap(stat)){
+        // find a pysical frame that is not in use
+        p->fram = allocate_frame(p) << PAGE_SHIFT;
+	}
+	// if the pte is valid and on swap
+    else if(isValid(stat) && isOnSwap(stat)){
+        // then get the frame number on the physical memory
+        int frame_number = p->frame >> PAGE_SHIFT;
+    }
+    // if the pte is valid and not on swap -> is on pysical memory
+    else{
 
+    }
 
 
 	// Make sure that p is marked valid and referenced. Also mark it
@@ -220,4 +241,18 @@ void print_pagedirectory() {
 			print_pagetbl(pgtbl);
 		}
 	}
+}
+
+
+int isValid(unsigned stat){
+    return stat & PG_VALID;
+}
+int isDirt(unsigned stat){
+	 return stat & PG_DIRTY;
+}
+int isRef(unsigned stat){
+	 return stat & PG_REF;
+}
+int isOnSwap(unsigned stat){
+	 return stat & PG_ONSWAP;
 }
