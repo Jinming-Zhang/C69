@@ -18,17 +18,17 @@ int rank = 0;
  * for the page that is to be evicted.
  */
 int fifo_evict() {
-	// go through physical frames and find the frame with lowest rank
-	int lowest_ranked_frame;
-	int lowest_rank = memsize + 1;
-	int i;
-	for(i = 0; i < memsize; i++){
-		if(coremap[i].rank < lowest_rank){
-			lowest_rank = coremap[i].rank;
-			lowest_ranked_frame = i;
-		}
-	}
-	return lowest_ranked_frame;
+  // go through physical frames and find the frame with lowest rank
+  int lowest_ranked_frame;
+  int lowest_rank = memsize + 1;
+  int i;
+  for(i = 0; i < memsize; i++){
+    if(coremap[i].rank < lowest_rank){
+      lowest_rank = coremap[i].rank;
+      lowest_ranked_frame = i;
+    }
+  }
+  return lowest_ranked_frame;
 }
 
 /* This function is called on each access to a page to update any information
@@ -36,17 +36,26 @@ int fifo_evict() {
  * Input: The page table entry for the page that is being accessed.
  */
 void fifo_ref(pgtbl_entry_t *p) {
-    coremap[p >> PAGE_SHIFT].rank = rank;
-    rank++;
-	return;
+  coremap[(p->frame) >> PAGE_SHIFT].rank = rank;
+  rank++;
+  if(rank > memsize){
+    int i;
+    for(i = 0; i < memsize; i++){
+      coremap[(p->frame) >> PAGE_SHIFT].rank = coremap[(p->frame) >> PAGE_SHIFT].rank - memsize;
+    }
+    rank = 0;
+  }
+  printf("updating the rank of frame %d to %d\n", (p->frame) >> PAGE_SHIFT, rank);
+  return;
 }
 
 /* Initialize any data structures needed for this 
  * replacement algorithm 
  */
 void fifo_init() {
-	int i;
-	for (i = 0; i < memsize; i++){
-		coremap[i].rank = memsize + 1;
-	}
+  int i;
+  for (i = 0; i < memsize; i++){
+    coremap[i].rank = memsize + 1;
+    printf("initializing the rank of frame %d\n", i);
+  }
 }

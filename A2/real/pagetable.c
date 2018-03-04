@@ -142,21 +142,21 @@ void init_frame(int frame, addr_t vaddr) {
 char *find_physpage(addr_t vaddr, char type) {
   pgtbl_entry_t *p=NULL; // pointer to the full page table entry for vaddr
   unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
-  printf("finding pysical space for %lu\n", vaddr);
+  //printf("finding pysical space for %lu\n", vaddr);
   // IMPLEMENTATION NEEDED
   // Use top-level page directory to get pointer to 2nd-level page table
-  printf("geting the pte head from the pde \n");
+  //printf("geting the pte head from the pde \n");
   if (pgdir[idx].pde == 0) {
 	pgdir[idx] = init_second_level();
   }
   // get the pointer of page talbe in pgdir_entry_t struct
   pgtbl_entry_t *head = (pgtbl_entry_t *) pgdir[idx].pde;
   
-  printf("geting the pte\n");
+  //printf("geting the pte\n");
   // Use vaddr to get index into 2nd-level page table and initialize 'p'
   idx = PGTBL_INDEX(vaddr);
   p = &(head[idx]);
-  printf("geting pte status %d\n, idx");
+  //printf("geting pte status %d\n, idx");
   // p represent the pte of the vadddr now------------------------------
   // Check if p is valid or not, on swap or not, and handle appropriately
   unsigned int pte = p->frame;
