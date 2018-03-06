@@ -8,8 +8,7 @@ pgdir_entry_t pgdir[PTRS_PER_PGDIR];
 
 // helper functions
 int isValid(unsigned int);
-int isDirt(unsigned int);
-int isRef(unsigned int);
+int isDirty(unsigned int);
 int isOnSwap(unsigned int);
 // Counters for various events.
 // Your code must increment these when the related events occur.
@@ -45,11 +44,19 @@ int allocate_frame(pgtbl_entry_t *p) {
     // Write victim page to swap, if needed, and update pagetable
     // IMPLEMENTATION NEEDED
 
-    // 1. retrive the pte that points to this victim frame
+    // retrive the pte that points to this victim frame
     pgtbl_entry_t *old_pte = coremap[frame].pte;
-    // 2. update the status of the old pte
+	// if the page was accessed, then it's dirty
+	if(isDirty(old_pte->frame)){
+		evict_dirty_count++;
+		old_pte->frame = old_pte->frame & ~PG_DIRTY;
+	}else{
+		evict_clean_count++;
+	}
+    // swap frames between swapfile and memory
     old_pte->swap_off = swap_pageout(old_pte->frame >> PAGE_SHIFT, old_pte->swap_off);
-    old_pte->frame = old_pte->frame & ~(PG_VALID) & ~(PG_ONSWAP);
+	// the old pte is not valid and on swap now
+    old_pte->frame = (old_pte->frame & (~PG_VALID)) | (PG_ONSWAP);
   }
 
   // Record information for virtual page that will now be stored in frame
@@ -142,35 +149,34 @@ void init_frame(int frame, addr_t vaddr) {
 char *find_physpage(addr_t vaddr, char type) {
   pgtbl_entry_t *p=NULL; // pointer to the full page table entry for vaddr
   unsigned idx = PGDIR_INDEX(vaddr); // get index into page directory
-  //printf("finding pysical space for %lu\n", vaddr);
+
   // IMPLEMENTATION NEEDED
   // Use top-level page directory to get pointer to 2nd-level page table
-  //printf("geting the pte head from the pde \n");
+  // initialize 2-lv page table
   if (pgdir[idx].pde == 0) {
 	pgdir[idx] = init_second_level();
   }
+
   // get the pointer of page talbe in pgdir_entry_t struct
   pgtbl_entry_t *head = (pgtbl_entry_t *) pgdir[idx].pde;
   
-  //printf("geting the pte\n");
   // Use vaddr to get index into 2nd-level page table and initialize 'p'
   idx = PGTBL_INDEX(vaddr);
   p = &(head[idx]);
-  //printf("geting pte status %d\n, idx");
-  // p represent the pte of the vadddr now------------------------------
+
+  // p represent the pte now------------------------------
   // Check if p is valid or not, on swap or not, and handle appropriately
   unsigned int pte = p->frame;
-  printf("checking status\n");
   // if the pte is invalid
   if (!isValid(pte)){
     miss_count++;
     // find a frame space on physical memory for this page
-    // set p->frame to the new frame number shifted left for 12 bits
-    p->frame = allocate_frame(p) << PAGE_SHIFT;
+    p->frame = (allocate_frame(p)) << PAGE_SHIFT;
     // if its on swap
     if(isOnSwap(pte)){
-      // write the frame stored in swap into the new frame on memory
       swap_pagein(p->frame >> PAGE_SHIFT, p->swap_off);
+      // not on swap now
+      p->frame = p->frame & ~(PG_ONSWAP);
     }
     // not on swap
     else{
@@ -186,7 +192,7 @@ char *find_physpage(addr_t vaddr, char type) {
   // Make sure that p is marked valid and referenced. Also mark it
   // dirty if the access type indicates that the page will be written to.
   // updates
-  p->frame = p->frame | PG_VALID | PG_REF;// use bitwise 'or' to set a bit to 1
+  p->frame = p->frame | PG_VALID | PG_REF;
   ref_count++;
   if (type == 'S' || type == 'M'){
     p->frame = p->frame | PG_DIRTY;
@@ -266,11 +272,8 @@ void print_pagedirectory() {
 int isValid(unsigned int stat){
   return stat & PG_VALID;
 }
-int isDirt(unsigned int stat){
+int isDirty(unsigned int stat){
   return stat & PG_DIRTY;
-}
-int isRef(unsigned int stat){
-  return stat & PG_REF;
 }
 int isOnSwap(unsigned int stat){
   return stat & PG_ONSWAP;
