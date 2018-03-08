@@ -65,6 +65,7 @@ struct frame {
 	char in_use;       // True if frame is allocated, False if frame is free
 	pgtbl_entry_t *pte;// Pointer back to pagetable entry (pte) for page
 	                   // stored in this frame
+	addr_t vaddr; //for opt
 };
 
 /* The coremap holds information about physical memory.

@@ -15,7 +15,7 @@ extern struct frame *coremap;
 extern char *tracefile;
 
 int curr_line;
-int table_zise;
+int table_size;
 int MAXLINE = 256;
 
 //my data type for implement hashtable
@@ -41,7 +41,7 @@ int *hashbits; //indicate hashtable slot empty or not
 //i choose to used the division method
 //since it is easy to implement 
 int gethash(addr_t vaddr){
-	return vaddr % table_zise;
+	return vaddr % table_size;
 }
 //creat new node
 struct node* init_node(addr_t vaddr, int distance){
@@ -92,7 +92,6 @@ int opt_evict() {
 		index = gethash(coremap[i].vaddr);
 		//no such vaddr in hashtable
 		if(hashbits[index]!=0){
-			printf("going to evict %d\n", i);
 			return i;
 		}
 		//process the linked list in slot
@@ -116,8 +115,8 @@ void opt_ref(pgtbl_entry_t *p) {
 	int frame = p->frame >> PAGE_SHIFT;
 	int index  = gethash(coremap[frame].vaddr);
 	if(hashtable[index]->first!=NULL){
-		struct node *remove = hashtable[index]->first->next;
-		hashtable[index]->first = remove;
+		struct node *remove = hashtable[index]->first;
+		hashtable[index]->first = remove->next;
 		free(remove);
 	}
 }
@@ -129,7 +128,7 @@ void opt_init() {
 	FILE *fp;
 	char buf[MAXLINE];
 	char type;
-	int table_size = 0;
+	int line = 0;
 	addr_t vaddr= 0;
 	//open file
 	fp = fopen(tracefile,"r");
@@ -142,10 +141,10 @@ void opt_init() {
 	while(fgets(buf, MAXLINE,fp)!=NULL){
 		//remove comments line
 		if(buf[0]!='='){
-			table_size++;
+			line++;
 		}
 	}
-
+	table_size = line;
 	//init hashtable
 	hashtable = malloc(sizeof(struct slot)*table_size);
 	hashbits = malloc(sizeof(int)*table_size);
