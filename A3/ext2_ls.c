@@ -29,11 +29,11 @@ unsigned char *disk;
    (if it exists) on a single line, and refrain from printing the . and ... 
 */
 int main(int argc, char **argv) {
-    struct ext2_inode* root;
+    struct ext2_inode *root, *last;
     int print_par_dir;
+    int i;
 	char *abs_path;
-	char **path;
-	
+	char type;
     int fd = open(argv[1], O_RDWR);
 
     disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -45,17 +45,13 @@ int main(int argc, char **argv) {
     /* validate and parse commands */
     // disk.img path
     if(argc == 3){
-        abs_path = malloc(sizeof(char) * strlen(argv[2]));
-        strcpy(abs_path, argv[2]);
+        abs_path = argv[2];
         print_par_dir = FALSE;
-        printf("%s\n", abs_path);
     }
     // disk.img -a path
     else if(strcmp(argv[2], "-a") == 0 && argc == 4){
-        abs_path = malloc(sizeof(char) * strlen(argv[3]));
-        strcpy(abs_path, argv[3]);
+        abs_path = argv[3];
         print_par_dir = TRUE;
-        printf("%s\n", abs_path);
     }
     else{
         printf("invalid commands\n");
@@ -84,27 +80,54 @@ int main(int argc, char **argv) {
     printf("size: %d, linkcount: %d blocks: %d\n", root->i_size,
     root->i_links_count, root->i_blocks);
       */
-    
+   
     /*printing each directory on a separate line.*/
-    root = get_inode(ROOT, disk);
+    root = get_inode(EXT2_ROOT_INO, disk);
 	// get the first path in after the root node
-	printf("type %c\n", check_inode_type(root));
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    return 0;
+	//printf("type of root %c\n", check_inode_type(root));
+	last = traverse(abs_path, root, disk);
+	
+	//printf("\n\nFinal result by ext2_ls-----\n");
+	if(last == NULL){
+		fprintf(stderr, "No such file or directory\n");
+		return ENOENT;
+	}else{
+		// if it is a file, just print its name
+		type = check_inode_type(last);
+		if(type == 'f'){
+			char *name;
+			name = strrchr(abs_path, '/') + 1;
+			printf("%s\n", name);
+		}else {//(type == 'd'){
+			struct ext2_dir_entry_2 *entry = get_entry(last->i_block[0], disk);
+			int block_count, cur_size, dir_size;
+			char name[EXT2_NAME_LEN + 1];
+			block_count = 1;
+			cur_size = 0;
+			dir_size = last->i_size;
+			// skip first two directory according to command
+			if (print_par_dir == FALSE){
+				for(i=0; i<2; i++){
+					entry = (void *) entry + entry->rec_len;
+					cur_size = cur_size + entry->rec_len;
+				}
+			}
+			while(cur_size < EXT2_BLOCK_SIZE){
+				memcpy(name, entry->name, entry->name_len);
+        		name[entry->name_len] = 0;
+				printf("%s\n", name);
+				// look up to next entry, update variables
+				entry = (void *) entry + entry->rec_len;
+				cur_size = cur_size + entry->rec_len;
+				if(cur_size > EXT2_BLOCK_SIZE && 
+						(cur_size + block_count * EXT2_BLOCK_SIZE)< dir_size){
+					// reset cur_size, entry points to next block, block_count++
+					cur_size = 0;
+					block_count++;
+					entry = get_entry(last->i_block[0]+block_count, disk);
+				}
+			}
+		}
+	}
+   return 0;
 }
