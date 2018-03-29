@@ -326,6 +326,7 @@ struct ext2_inode *traverse(char *path, struct ext2_inode *root,
 	@dir_node: the inode of the parent directory
 	@filename: the name of the file we want to find under the parent directory
 	@return: the inode of the file, or NULL if it doesn't exist in the directory
+	CAN NOT find file in the indirect blocks
 */
 struct ext2_inode *find_file_inode(struct ext2_inode *dir_node,
 							char *filename, unsigned char *disk){
@@ -410,8 +411,11 @@ void cp_block_content(int src, int tar, int size, unsigned char *disk){
 }
 
 /* give a first entry of an entry block and a target file name
-   return the entry struct of that file 
-   return NULL if no entry matches the filename*/
+   @filename: the target filename in the entry block
+   @enter: pointer to the first entry of the entry block
+   @return the entry struct of that file 
+   		   return NULL if no entry matches the filename
+ */
 struct ext2_dir_entry_2 *find_entry(char *filename,
 									struct ext2_dir_entry_2 *enter){
 	printf("geting the file entry of file %s\n",filename);
@@ -435,11 +439,12 @@ struct ext2_dir_entry_2 *find_entry(char *filename,
 	return NULL;
 }
 
-/* update the entry block by the given new infor of a entry
+/* update the entry block by the given new info of a entry
    @blk_number: block number of the entry block
    @filetype: filetype of the updating entry
    @new_inode: inode number that related to the new entry
    @new_name: name of the new entry(file/directory)
+   block must have enough space
 */
 void update_entry_block(int blk_number, unsigned char filetype,
 						int new_inode, char *new_name, unsigned char *disk){
@@ -478,9 +483,6 @@ void update_entry_block(int blk_number, unsigned char filetype,
 	   then check the rest of entreis
 	*/
 	else{
-		//entry = (void *) entry + entry->rec_len;
-		//cur_size = cur_size + entry->rec_len;
-
 		while (cur_size < EXT2_BLOCK_SIZE){
 			// this entry is the last
 			if((cur_size + entry->rec_len) == EXT2_BLOCK_SIZE){
