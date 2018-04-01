@@ -188,6 +188,7 @@ char *extract_filename(char *path, char **rest){
    @path: absolute path of a file
    @dir: returned dir path of the file, allocated on the heap
    @filename: returned filename of the file, allocated on the heap
+   return 0 on successful call
 */
 int get_dir_filename(char *path, char **dir, char **filename){
 	char *temp;
@@ -459,34 +460,34 @@ void update_entry_block(int blk_number, unsigned char filetype,
 
 	/* deal with unpredicable rec_len of '..' in case of dir is not empty */
 	// skip '.' entry
-	entry = (void *) entry + entry->rec_len;
-	cur_size = cur_size + entry->rec_len;
+	// entry = (void *) entry + entry->rec_len;
+	// cur_size = cur_size + entry->rec_len;
 
-	// if the directory is empty. (rec_len in '..' is huge)
-	if((cur_size + entry->rec_len) == EXT2_BLOCK_SIZE){
-		update = (void *) entry + real_entry_size(entry);
+	// // if the directory is empty. (rec_len in '..' is huge)
+	// if((cur_size + entry->rec_len) == EXT2_BLOCK_SIZE){
+	// 	update = (void *) entry + real_entry_size(entry);
 	
 
-		update->inode = new_inode;			
-		update->name_len = strlen(new_name);
-		memcpy(update->name, new_name, strlen(new_name));
-		(update->name)[strlen(new_name)] = '\0';
-		update->file_type = filetype;
+	// 	update->inode = new_inode;			
+	// 	update->name_len = strlen(new_name);
+	// 	memcpy(update->name, new_name, strlen(new_name));
+	// 	(update->name)[strlen(new_name)] = '\0';
+	// 	update->file_type = filetype;
 
-		update->rec_len = (entry->rec_len) -(real_entry_size(update));
-		entry->rec_len = real_entry_size(entry);
-		printf("rec_len of new entry: %d, pre rec_len: %d\n",update->rec_len, entry->rec_len);
-		return;
-	}
+	// 	update->rec_len = (entry->rec_len) -(real_entry_size(update));
+	// 	entry->rec_len = real_entry_size(entry);
+	// 	printf("rec_len of new entry: %d, pre rec_len: %d\n",update->rec_len, entry->rec_len);
+	// 	return;
+	// }
 	/* directory is not empty, however, sometime the rec_len of '..' is not same
 	   as the calculated real size of '..', so need to skip the '..' entry and
 	   then check the rest of entreis
 	*/
-	else{
-		while (cur_size < EXT2_BLOCK_SIZE){
+	//else{
+		while ((cur_size + entry->rec_len) <= EXT2_BLOCK_SIZE){
 			// this entry is the last
 			if((cur_size + entry->rec_len) == EXT2_BLOCK_SIZE){
-				cur_size = cur_size + entry->rec_len;
+			//	cur_size = cur_size + entry->rec_len;
 
 				memcpy(entry_name, entry->name, entry->name_len);
 				entry_name[entry->name_len] = '\0';
@@ -512,8 +513,47 @@ void update_entry_block(int blk_number, unsigned char filetype,
 			cur_size = cur_size + entry->rec_len;
 			entry = (void *) entry + entry->rec_len;
 
+		//}
+	}
+}
+
+int delete_entry_block(int blk_number, char *filename, unsigned char *disk){
+	printf("\n\tDeleting dir entry in block %d\n", blk_number);
+	struct ext2_dir_entry_2 *cur, *pre;
+
+	cur = get_entry(blk_number, disk);
+	//pre = cur;
+	int cur_size = 0;
+	char entry_name[EXT2_NAME_LEN + 1];
+
+	while((cur_size+cur->rec_len) <= EXT2_BLOCK_SIZE){
+		memcpy(entry_name, cur->name, cur->name_len);
+		entry_name[cur->name_len] = '\0';
+		printf("checking entry: %s\n", entry_name);
+		if(strcmp(filename, entry_name) == 0){
+			/* delete the entry here */
+			// if the file is the last in the entry
+			if(cur_size+cur->rec_len == EXT2_BLOCK_SIZE){
+				// just point the previous entry's reclen to the end of block
+				pre->rec_len = pre->rec_len + cur->rec_len;
+				return 0;
+			}
+			// if the file is not hte last file in the entry
+			else{
+				struct ext2_dir_entry_2 *next;
+				next = (void *) cur+cur->rec_len;
+				memcpy(cur, next, next->rec_len);
+				return 0;
+			}
+		}
+		else{
+			// look up to next entry, update variables
+			cur_size = cur_size + cur->rec_len;
+			pre = cur;
+			cur = (void *) cur + cur->rec_len;
 		}
 	}
+	return -1;
 }
 
 int real_entry_size(struct ext2_dir_entry_2 *ent){
@@ -527,6 +567,11 @@ int real_entry_size(struct ext2_dir_entry_2 *ent){
 	}
 }
 
+int total_blks(int iblocks, unsigned char *disk){
+	struct ext2_super_block *sb;
+	sb = get_super_block(disk);
+	return iblocks/(2<<sb->s_log_block_size);
+}
 void print_block_content(int blk_number, int size, unsigned char *disk){
 	char *fir = get_block(blk_number, disk);
 	int i;
