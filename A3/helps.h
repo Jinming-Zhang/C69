@@ -24,8 +24,8 @@
 #define BLK_BTMP_SIZE 1024
 #define IND_BTMP_SIZE 1024
 #define BYTE 8
-#define INODE_BITMAP 8888
-#define BLOCK_BITMAP 6666
+#define INODE_BITMAP 32
+#define BLOCK_BITMAP 128
 
 struct ext2_super_block *sb;
 struct ext2_group_desc *gd;
@@ -52,14 +52,23 @@ struct ext2_inode *get_inode(int number, unsigned char *disk){
 	return (struct ext2_inode *) (disk + gd->bg_inode_table * EXT2_BLOCK_SIZE
 									+ sizeof(struct ext2_inode) * (number-1));
 }
-
+// struct ext2_dir_entry_2 pointer to the beginning of the block
 struct ext2_dir_entry_2 *get_entry(int block_number, unsigned char *disk){
 	return (struct ext2_dir_entry_2 *) 
 		   (disk + (block_number) * EXT2_BLOCK_SIZE);
 }
-
+// char pointer to the beginning of a block
 char *get_block(int number, unsigned char *disk){
 	return (char *) get_entry(number, disk);
+}
+
+
+
+int single_indirblk_num(int indir_blknb, int number, unsigned char *disk){
+	int *ptr_blk, res;
+    ptr_blk = (int *) get_block(indir_blknb, disk);
+    res = ptr_blk[number-1];
+    return res;
 }
 
 /* Bit map helper functions */
@@ -123,14 +132,13 @@ void print_bitmap(int *mp, int len){
 int free_position(int *mp, int mode){
 	int res, i;
 	res = -1;
-	for(i=0; i<mode; i++){
-		if(mp[i] == 0){
-			return i+1;
+	for(i=RESERVED_NODE; i<mode; i++){
+		if(mp[i] == FREE){
+			return i+1;//return the block number instead of index
 		}
 	}
 	return res;
 }
-/* bug proved----------------------------------------------------------------*/
 
 /* ----------------  directory helper functions  ---------------------------- */
 
@@ -158,8 +166,6 @@ char *extract_filename(char *path, char **rest){
 		// only root is given 
 		if (strlen(path) == 1){
 			*(rest) = NULL;
-			//strcpy(result, path);
-			//result[strlen(path)]='\0';
 			result = NULL;
 			return result;
 		}
@@ -327,7 +333,6 @@ struct ext2_inode *traverse(char *path, struct ext2_inode *root,
 	@dir_node: the inode of the parent directory
 	@filename: the name of the file we want to find under the parent directory
 	@return: the inode of the file, or NULL if it doesn't exist in the directory
-	CAN NOT find file in the indirect blocks
 */
 struct ext2_inode *find_file_inode(struct ext2_inode *dir_node,
 							char *filename, unsigned char *disk){
@@ -364,12 +369,21 @@ struct ext2_inode *find_file_inode(struct ext2_inode *dir_node,
 					printf("reaches last block, return NULL\n");
 					return NULL;
 				}else{// go to the next block
-					int next_blk = dir_node->i_block[block_count];
-					entry = get_entry(next_blk, disk);
 					cur_size = 0;
 					block_count++;
+					// check the next direct block for this dir
+					if(block_count <= 12){
+						entry = get_entry(dir_node->i_block[block_count], disk);
+					}else{
+						// check for single indirect blocks
+						int next_blk;
+						next_blk = single_indirblk_num(dir_node->i_block[12], block_count-12, disk);
+       					entry = get_entry(next_blk, disk);
+					}
 				}
-			}else{// looking for next entry in this block
+			}
+			// looking for next entry in this block
+			else{
 				cur_size = cur_size + entry->rec_len;
 				entry = (void *) entry + entry->rec_len;
 			printf("	this entry doesn't match, update to next(cur_size: %d)\n", cur_size);
@@ -429,6 +443,7 @@ struct ext2_dir_entry_2 *find_entry(char *filename,
 		entry_name[res->name_len] = '\0';
 		printf("checking entry: %s\n", entry_name);
 		if(strcmp(filename, entry_name) == 0){
+			printf("found file %s in the entry, return\n", entry_name);
 			return res;
 		}
 		else{
@@ -437,6 +452,7 @@ struct ext2_dir_entry_2 *find_entry(char *filename,
 			res = (void *) res + res->rec_len;
 		}
 	}
+	printf("no file in the entry, return NULL");
 	return NULL;
 }
 
@@ -457,63 +473,34 @@ void update_entry_block(int blk_number, unsigned char filetype,
 	int cur_size = 0;
 	char entry_name[EXT2_NAME_LEN + 1];
 
+	while ((cur_size + entry->rec_len) <= EXT2_BLOCK_SIZE){
+		// this entry is the last
+		if((cur_size + entry->rec_len) == EXT2_BLOCK_SIZE){
 
-	/* deal with unpredicable rec_len of '..' in case of dir is not empty */
-	// skip '.' entry
-	// entry = (void *) entry + entry->rec_len;
-	// cur_size = cur_size + entry->rec_len;
+		memcpy(entry_name, entry->name, entry->name_len);
+		entry_name[entry->name_len] = '\0';
+		printf("the last file in this directory is: %s ", entry_name);
+		printf("with rec_len: %d, real_entry_size: %d\n",
+ 				entry->rec_len, real_entry_size(entry));
 
-	// // if the directory is empty. (rec_len in '..' is huge)
-	// if((cur_size + entry->rec_len) == EXT2_BLOCK_SIZE){
-	// 	update = (void *) entry + real_entry_size(entry);
-	
+		update = (void *) entry + real_entry_size(entry);
 
-	// 	update->inode = new_inode;			
-	// 	update->name_len = strlen(new_name);
-	// 	memcpy(update->name, new_name, strlen(new_name));
-	// 	(update->name)[strlen(new_name)] = '\0';
-	// 	update->file_type = filetype;
+		update->inode = new_inode;			
+		update->name_len = strlen(new_name);
+		memcpy(update->name, new_name, strlen(new_name));
+		memcpy(&(update->file_type), &filetype, sizeof(unsigned char));
 
-	// 	update->rec_len = (entry->rec_len) -(real_entry_size(update));
-	// 	entry->rec_len = real_entry_size(entry);
-	// 	printf("rec_len of new entry: %d, pre rec_len: %d\n",update->rec_len, entry->rec_len);
-	// 	return;
-	// }
-	/* directory is not empty, however, sometime the rec_len of '..' is not same
-	   as the calculated real size of '..', so need to skip the '..' entry and
-	   then check the rest of entreis
-	*/
-	//else{
-		while ((cur_size + entry->rec_len) <= EXT2_BLOCK_SIZE){
-			// this entry is the last
-			if((cur_size + entry->rec_len) == EXT2_BLOCK_SIZE){
-			//	cur_size = cur_size + entry->rec_len;
-
-				memcpy(entry_name, entry->name, entry->name_len);
-				entry_name[entry->name_len] = '\0';
-				printf("the last file in this directory is: %s ", entry_name);
-				printf("with rec_len: %d, real_entry_size: %d\n",
-					entry->rec_len, real_entry_size(entry));
-
-				update = (void *) entry + real_entry_size(entry);
-
-				update->inode = new_inode;			
-				update->name_len = strlen(new_name);
-				memcpy(update->name, new_name, strlen(new_name));
-				update->file_type = filetype;
-
-				update->rec_len = (entry->rec_len) -
-								  (real_entry_size(update));
-				entry->rec_len = real_entry_size(entry);
+		update->rec_len = (entry->rec_len) -
+								  (real_entry_size(entry));
+		entry->rec_len = real_entry_size(entry);
 				printf("rec_len of new entry: %d, pre rec_len: %d\n",update->rec_len, entry->rec_len);
 				break;
-			}
-			printf("entry has reclen: %d,name: %s\n", entry->rec_len,entry->name);
-			// if not, keep looking
-			cur_size = cur_size + entry->rec_len;
-			entry = (void *) entry + entry->rec_len;
+		}
+		printf("entry has reclen: %d,name: %s\n", entry->rec_len,entry->name);
+		// if not, keep looking
+		cur_size = cur_size + entry->rec_len;
+		entry = (void *) entry + entry->rec_len;
 
-		//}
 	}
 }
 
@@ -533,18 +520,16 @@ int delete_entry_block(int blk_number, char *filename, unsigned char *disk){
 		if(strcmp(filename, entry_name) == 0){
 			/* delete the entry here */
 			// if the file is the last in the entry
-			if(cur_size+cur->rec_len == EXT2_BLOCK_SIZE){
+			//if(cur_size+cur->rec_len == EXT2_BLOCK_SIZE){
 				// just point the previous entry's reclen to the end of block
 				pre->rec_len = pre->rec_len + cur->rec_len;
 				return 0;
-			}
+			//}
 			// if the file is not hte last file in the entry
-			else{
-				struct ext2_dir_entry_2 *next;
-				next = (void *) cur+cur->rec_len;
-				memcpy(cur, next, next->rec_len);
-				return 0;
-			}
+			//else{
+			//	pre->rec_len = pre->rec_len + cur->rec_len;
+			//	return 0;
+			//}
 		}
 		else{
 			// look up to next entry, update variables
@@ -572,6 +557,21 @@ int total_blks(int iblocks, unsigned char *disk){
 	sb = get_super_block(disk);
 	return iblocks/(2<<sb->s_log_block_size);
 }
+
+/* finds the last entry block of the given directory inode
+*/
+int last_dir_blk(struct ext2_inode *dir, unsigned char *disk){
+	int last_blk, total_blk;
+    total_blk = total_blks(dir->i_blocks, disk);
+    if(total_blk <= 12){
+        last_blk = dir->i_block[total_blk-1];
+    }else{
+      // check for single indirect blocks
+      last_blk = single_indirblk_num(dir->i_block[12], total_blk-12, disk);
+    }
+    return last_blk;
+}
+
 void print_block_content(int blk_number, int size, unsigned char *disk){
 	char *fir = get_block(blk_number, disk);
 	int i;

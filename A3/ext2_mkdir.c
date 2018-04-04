@@ -26,7 +26,7 @@ unsigned char *disk;
 */
 int main(int argc, char **argv) {
     
-    char *dir_path, dir_name[EXT2_NAME_LEN+1], *par_dir_path;
+    char *dir_path, *dir_name, *par_dir_path;
 
     int fd = open(argv[1], O_RDWR);
 
@@ -47,56 +47,20 @@ int main(int argc, char **argv) {
 
     /* create a new directory under the given path */
     // extract the name of new directory, the path of the directory
-    char *temp;
-    temp = strrchr(dir_path, '/');
-    // cases: /dirname
-    //        /dirname/
-    //        /path1/dirname
-    //        /path1/dirname/
-    //        /  (invalid)
-    if(dir_path[0] != '/' || strlen(dir_path) == 1){
-      fprintf(stderr, "only gives root, no dirname in the argument\n");
-      return ENOENT;
-    }
-    else if(strlen(temp) == 1){// '/' followed by the dir name
-      char *pre = temp-1;
-      while ((*pre) != '/'){
-        pre--;
-      }
-      int name_len = strlen(pre) - strlen(temp) - 1;
-      strncpy(dir_name, pre+1, name_len);
-      dir_name[name_len] = '\0';
-      pre++; // pre now points to the first letter of the new directory name
-      int dir_len = strlen(dir_path) - strlen(pre);
-      par_dir_path = malloc(sizeof(char) * dir_len + 1);
-      strncpy(par_dir_path, dir_path, dir_len);
-      par_dir_path[dir_len] = '\0';
-    }else{
-      int name_len = strlen(temp) - 1;
-      strncpy(dir_name, (temp+1), name_len);
-      dir_name[name_len] ='\0';
-
-      temp++;
-      int dir_len = strlen(dir_path) - strlen(temp);
-      par_dir_path = malloc(sizeof(char) * dir_len + 1);
-      strncpy(par_dir_path, dir_path, dir_len);
-      par_dir_path[dir_len] = '\0';
+    if(get_dir_filename(dir_path, &par_dir_path, &dir_name) != 0){
+      fprintf(stderr, "Error on extracting directory and file name\n");
+      return 0;
     }
     printf("creating dir of name '%s' under directory '%s'\n", dir_name, par_dir_path);
-
-
-
-    /* can validate the name of the new directory here */
 
     /* make the new directory in the disk */
     struct ext2_inode *par_inode, *root;
 
     root = get_inode(EXT2_ROOT_INO, disk);
     par_inode = traverse(par_dir_path, root, disk);
-
     // check if the directory already exist
     if(find_file_inode(par_inode, dir_name, disk) != NULL){
-      fprintf(stderr, "dir already exist\n");
+      fprintf(stderr, "Directory already exist\n");
       return EEXIST;
     }else{
       printf("dir %s doesn't exist in %s, now creating...\n", dir_name, par_dir_path);
@@ -106,33 +70,77 @@ int main(int argc, char **argv) {
       int free_ind, free_blk;
       get_bitmap(blk_bitmap, disk, BLOCK_BITMAP);
       get_bitmap(ind_bitmap, disk, INODE_BITMAP);
+
       free_ind = free_position(ind_bitmap, INODE_BITMAP);
       // to initialize i_block[0]
       free_blk = free_position(blk_bitmap, BLOCK_BITMAP);
-
+      set_bitmap(blk_bitmap, disk, BLOCK_BITMAP, free_blk, USING);
+      printf("freeblock at %d\n", free_blk);
       // get the free inode and initialize it to represent this new directory
       struct ext2_inode *new_dir_inode;
 
       new_dir_inode = get_inode(free_ind, disk);
-      new_dir_inode->i_mode = (new_dir_inode->i_mode) | EXT2_S_IFDIR;
-      new_dir_inode->i_links_count = 1;
-      new_dir_inode->i_blocks = 1;
-      new_dir_inode->i_block[0] = free_blk;
 
+      new_dir_inode->i_mode = EXT2_S_IFDIR;
+      new_dir_inode->i_links_count = 1;
+      new_dir_inode->i_blocks = 2;
+      new_dir_inode->i_block[0] = free_blk;
+      // update entry for directory itself
+      struct ext2_dir_entry_2 *entry;
+      entry = get_entry(free_blk, disk);
+      entry->inode = free_ind;
+      entry->name_len = strlen(".");
+      memcpy(entry->name, ".", strlen("."));
+      entry->file_type = EXT2_FT_DIR;
+      entry->rec_len = 12;
+      entry = (void *) entry+entry->rec_len;
+      // update entry for the parent directory
+      if(strcmp(par_dir_path,"/") == 0){
+        entry->inode = EXT2_ROOT_INO;
+      }else{
+        char *pp_dir, *pp_name;
+        if(get_dir_filename(par_dir_path, &pp_dir, &pp_name) != 0){
+          fprintf(stderr, "Error on extracting directory and file name\n");
+          return 0;
+        }
+        struct ext2_dir_entry_2 *ppent;
+        ppent= find_entry(pp_name, 
+                  get_entry((traverse(pp_dir, root, disk)->i_block[0]), disk));
+        entry->inode = ppent->inode;
+        printf("update inode number of par dir%d\n", ppent->inode);
+      }
+      entry->name_len = strlen("..");
+      memcpy(entry->name, "..", strlen(".."));
+      entry->file_type = EXT2_FT_DIR;
+      entry->rec_len = 1012;
+
+    
+      new_dir_inode->i_size = EXT2_BLOCK_SIZE;
+      printf("type of new inode %c\n", check_inode_type(new_dir_inode));
       // update the bitmap and blocks taken by this new directory
       set_bitmap(ind_bitmap, disk, INODE_BITMAP, free_ind, USING);
       set_bitmap(blk_bitmap, disk, BLOCK_BITMAP, free_blk, USING);
-
+      printf("next freeblk is %d\n",free_position(blk_bitmap, BLOCK_BITMAP));
       // update the entries of the parent directory
-      unsigned char file_type = EXT2_FT_DIR;
+      //unsigned char file_type = EXT2_FT_DIR;
 
-      /* need for further compute the total blocks occupied by the par_dir */
-      int last_dir_blk;
-      last_dir_blk = par_inode->i_block[0];
-      printf("updating entry with: blk: %d, type: %c, inode: %d, name: %s\n",
-            last_dir_blk, file_type, free_ind, dir_name);
-      update_entry_block(last_dir_blk, file_type, free_ind, dir_name, disk);
+      /* compute the total blocks occupied by the par_dir */
+      int last_dir_blk, total_blk;
+      total_blk = total_blks(par_inode->i_blocks, disk);
+      printf("total blocks%d ,%d ", total_blk,par_inode->i_blocks);
+      if(total_blk <= 12){
+        last_dir_blk = par_inode->i_block[total_blk-1];
+        printf("last blk is %d, parinode blk is: %d\n",last_dir_blk, par_inode->i_block[0]);
+      }else{
+        // check for single indirect blocks
+        last_dir_blk = single_indirblk_num(par_inode->i_block[12], total_blk-12, disk);
+      }
+      printf("updating entry with: blk: %d, type: %d, inode: %d, name: %s\n",
+            last_dir_blk, (int) EXT2_FT_DIR, free_ind, dir_name);
+      update_entry_block(last_dir_blk, EXT2_FT_DIR, free_ind, dir_name, disk);
 
     }
-   return 0;
+    free(par_dir_path);
+    free(dir_name);
+    return 0;
 }

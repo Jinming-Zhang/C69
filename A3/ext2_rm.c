@@ -35,7 +35,7 @@ unsigned char *disk;
 	source file. 
 */
 int main(int argc, char **argv) {
-    
+    char *rm_path;
     int fd = open(argv[1], O_RDWR);
 
     disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -47,15 +47,38 @@ int main(int argc, char **argv) {
     /* validate and parse commands */
     // disk.img path
     if(argc == 3){
-  
-    }
-    // disk.img -a path
-    else if(strcmp(argv[2], "-a") == 0 && argc == 4){
-       
-    }
-    else{
+      rm_path = argv[2];
+      printf("get file %s\n", rm_path);
+    }else{
         printf("invalid commands\n");
         return 0;
-    } 
+    }
+
+    /* remove the file */
+
+    // extract the filename and its directory
+    char *rm_dir, *rm_filename;
+    if(get_dir_filename(rm_path, &rm_dir, &rm_filename) != 0){
+      fprintf(stderr, "Error on extract filename and directory\n");
+      return 0;
+    }
+    printf("removing file %s under directory %s\n", rm_filename, rm_dir);
+
+    // get the inode representing the dir and the file
+    struct ext2_inode *root, *dir_inode;// *file_inode;
+    root = get_inode(EXT2_ROOT_INO, disk);
+    dir_inode = traverse(rm_dir, root, disk);
+    //file_inode = traverse(rm_filename, root, disk);
+    if(dir_inode == NULL){
+      fprintf(stderr, "file or directory doesn't exist\n");
+      return ENOENT;
+    }
+
+    // update dir entry
+    if(delete_entry_block(dir_inode->i_block[0], rm_filename, disk) != 0){
+      fprintf(stderr, "File doesn't exist\n");
+      return ENOENT;
+    }
+
    return 0;
 }
