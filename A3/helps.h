@@ -24,8 +24,6 @@
 #define BLK_BTMP_SIZE 1024
 #define IND_BTMP_SIZE 1024
 #define BYTE 8
-#define INODE_BITMAP 32
-#define BLOCK_BITMAP 128
 
 struct ext2_super_block *sb;
 struct ext2_group_desc *gd;
@@ -77,7 +75,7 @@ void get_bitmap(int *mp, unsigned char *disk, int mode){
     int len, i, j;
     gd = get_bg_descriptor(disk);
     // set bitmap pointer correspondingly
-    if(mode == BLOCK_BITMAP){
+    if(mode == BLOCKS){
     	mp_ptr = (char *) (disk + gd->bg_block_bitmap * EXT2_BLOCK_SIZE);
     	len = BLOCKS;
     }else{
@@ -100,7 +98,7 @@ void set_bitmap(int *mp, unsigned char *disk, int mode, int number, int value){
 	tar = number - 1;
 	gd = get_bg_descriptor(disk);
 	// set bitmap pointer correspondingly
-    if(mode == BLOCK_BITMAP){
+    if(mode == BLOCKS){
     	mp_ptr = (char *) (disk + gd->bg_block_bitmap * EXT2_BLOCK_SIZE);
     }else{
     	mp_ptr = (char *) (disk + gd->bg_inode_bitmap * EXT2_BLOCK_SIZE);

@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
         print_par_dir = TRUE;
     }
     else{
-        printf("invalid commands\n");
+        printf("Invalid arguments\n");
         return 0;
     } 
     

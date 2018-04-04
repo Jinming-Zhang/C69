@@ -10,7 +10,7 @@
 #include <string.h>
 
 
-
+#define MAX_PATH_LEN 60
 unsigned char *disk;
 
 /* This program takes three command line arguments.
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
        is_s_link = TRUE;
     }
     else{
-        printf("invalid commands\n");
+        printf("Invalid arguments\n");
         return 0;
     }
 
@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
     char *lk_name, *lk_dir;
     // extract the name of new directory, the path of the directory
     if(get_dir_filename(lk_path, &lk_dir, &lk_name) != 0){
-      printf("error on extracting link name and dir\n");
+      fprintf(stderr, "error on extracting link name and dir\n");
       return 0;
     }
     //find inode of src file inode for the link directory
@@ -93,73 +93,61 @@ int main(int argc, char **argv) {
 
     // creating a symbolic link
     if(is_s_link){
-      printf("creating symbolic link under dir: %s with name %s\n", lk_dir, lk_name);
       filetype = EXT2_FT_SYMLINK;
 
       // get a free inode for new symbolic link file
       int ind_bitmap[INODES], free_ind;
-      get_bitmap(ind_bitmap, disk, INODE_BITMAP);
-      free_ind = free_position(ind_bitmap, INODE_BITMAP);
+      get_bitmap(ind_bitmap, disk, INODES);
+      free_ind = free_position(ind_bitmap, INODES);
+      set_bitmap(ind_bitmap, disk, INODES, free_ind, USING);
       // set up the inode
       struct ext2_inode *new_dir_inode;
       new_dir_inode = get_inode(free_ind, disk);
 
-      new_dir_inode->i_mode =  EXT2_S_IFLNK;
-      new_dir_inode->i_links_count = 1;
-      new_dir_inode->i_blocks = 1;
       // check the lengh of the absolute link path
-      if(strlen(src_path)<=60){// store the path inside the inode
-        printf("storing path %s inside the inode: ", src_path);
+      if(strlen(src_path)<=MAX_PATH_LEN){// store the path inside the inode
+        new_dir_inode->i_blocks = 0;
         int str_len, stored;
         char *tar;
         str_len = strlen(src_path);
         stored = 0;
+        // store the path inside i_block[] array
         while(stored <= str_len){
-          tar =(char *) &(new_dir_inode->i_block[stored/sizeof(unsigned int)]) + stored%sizeof(unsigned int);
+          tar =(char *) &(new_dir_inode->i_block[stored/sizeof(unsigned int)])
+                          + stored%sizeof(unsigned int);
           memcpy(tar, &(src_path[stored]), sizeof(char));
           stored++;
         }
-
-        stored = 0;
-        while(stored <= str_len){
-          char res;
-          tar = (char *) &(new_dir_inode->i_block[stored/sizeof(int)]) + stored%sizeof(int);
-          memcpy(&res, tar, sizeof(char));
-          printf("%c",res);
-          stored++;
-        }
-        printf(" stored: %d\n", stored);
       }else{// store the path in a separate block
-        printf("storing path %s in a block:", src_path);
+        new_dir_inode->i_blocks = EXT2_BLOCK_SIZE/DISK_SECTOR;
         int blk_bitmap[BLOCKS], free_blk;
-        get_bitmap(blk_bitmap, disk, BLOCK_BITMAP);
-        free_blk = free_position(blk_bitmap, BLOCK_BITMAP);
+        get_bitmap(blk_bitmap, disk, BLOCKS);
+        free_blk = free_position(blk_bitmap, BLOCKS);
+        // write the path to the block
         char *tar_blk;
         tar_blk = get_block(free_blk, disk);
         memcpy(tar_blk, src_path, strlen(src_path));
         tar_blk[strlen(src_path)] = '\0';
         new_dir_inode->i_block[0] = free_blk;
-        set_bitmap(blk_bitmap, disk, BLOCK_BITMAP, free_blk, USING);
-        printf("%s\n",tar_blk);
-
+        set_bitmap(blk_bitmap, disk, BLOCKS, free_blk, USING);
       }
-      new_dir_inode->i_size = EXT2_BLOCK_SIZE;
 
-      set_bitmap(ind_bitmap, disk, INODE_BITMAP, free_ind, USING);
+      // other fields of inode
+      new_dir_inode->i_mode =  EXT2_S_IFLNK;
+      new_dir_inode->i_links_count = 1;
+      new_dir_inode->i_size = EXT2_BLOCK_SIZE;
       entry_inode = free_ind;
     }
     // creating a hard link
     else{
       filetype = EXT2_FT_REG_FILE;
-      printf("creating hard link under dir: %s with name %s\n", lk_dir, lk_name);
       char *src_dir, *src_name;
       struct ext2_inode *src_dir_inode;
       if(get_dir_filename(src_path, &src_dir, &src_name) != 0){
-        printf("error on extracting link name and dir\n");
+        printf("error on extracting src name and dir\n");
         return 0;
       }
-
-      printf("src dir: %s, src filename: %s\n", src_dir, src_name);
+      // get the inode for the src file
       struct ext2_dir_entry_2 *src_file_entry;
       src_dir_inode = traverse(src_dir, root, disk);
       src_file_entry = get_entry(src_dir_inode->i_block[0], disk);
@@ -171,9 +159,8 @@ int main(int argc, char **argv) {
       free(src_name);
     }
 
+    // update the directory entry depends on the type of thel ink
     update_entry_block(last_blk, filetype, entry_inode, lk_name, disk);
-
-
 
     free(lk_dir);
     free(lk_name);

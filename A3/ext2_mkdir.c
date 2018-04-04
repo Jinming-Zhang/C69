@@ -68,13 +68,13 @@ int main(int argc, char **argv) {
       // allocate necessary resources
       int blk_bitmap[BLOCKS], ind_bitmap[INODES];
       int free_ind, free_blk;
-      get_bitmap(blk_bitmap, disk, BLOCK_BITMAP);
-      get_bitmap(ind_bitmap, disk, INODE_BITMAP);
+      get_bitmap(blk_bitmap, disk, BLOCKS);
+      get_bitmap(ind_bitmap, disk, INODES);
 
-      free_ind = free_position(ind_bitmap, INODE_BITMAP);
+      free_ind = free_position(ind_bitmap, INODES);
       // to initialize i_block[0]
-      free_blk = free_position(blk_bitmap, BLOCK_BITMAP);
-      set_bitmap(blk_bitmap, disk, BLOCK_BITMAP, free_blk, USING);
+      free_blk = free_position(blk_bitmap, BLOCKS);
+      set_bitmap(blk_bitmap, disk, BLOCKS, free_blk, USING);
       printf("freeblock at %d\n", free_blk);
       // get the free inode and initialize it to represent this new directory
       struct ext2_inode *new_dir_inode;
@@ -118,9 +118,9 @@ int main(int argc, char **argv) {
       new_dir_inode->i_size = EXT2_BLOCK_SIZE;
       printf("type of new inode %c\n", check_inode_type(new_dir_inode));
       // update the bitmap and blocks taken by this new directory
-      set_bitmap(ind_bitmap, disk, INODE_BITMAP, free_ind, USING);
-      set_bitmap(blk_bitmap, disk, BLOCK_BITMAP, free_blk, USING);
-      printf("next freeblk is %d\n",free_position(blk_bitmap, BLOCK_BITMAP));
+      set_bitmap(ind_bitmap, disk, INODES, free_ind, USING);
+      set_bitmap(blk_bitmap, disk, BLOCKS, free_blk, USING);
+      printf("next freeblk is %d\n",free_position(blk_bitmap, BLOCKS));
       // update the entries of the parent directory
       //unsigned char file_type = EXT2_FT_DIR;
 

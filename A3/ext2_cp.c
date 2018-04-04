@@ -103,8 +103,8 @@ int main(int argc, char **argv) {
 
 		// check available resources
 		int blk_bitmap[BLOCKS], ind_bitmap[INODES];
-		get_bitmap(blk_bitmap, disk, BLOCK_BITMAP);
-		get_bitmap(ind_bitmap, disk, INODE_BITMAP);
+		get_bitmap(blk_bitmap, disk, BLOCKS);
+		get_bitmap(ind_bitmap, disk, INODES);
 		printf("blk bitmap:\n");
 		print_bitmap(blk_bitmap, BLOCKS);
 		printf("ind bitmap:\n");
@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
 		/* to copy a file */
 		// get the 
 		int free_blk, free_ind;
-		free_ind = free_position(ind_bitmap, INODE_BITMAP);
+		free_ind = free_position(ind_bitmap, INODES);
 		printf("find free inode at postion %d\n", free_ind);
 
 		/* update target directories entries */
@@ -150,17 +150,17 @@ int main(int argc, char **argv) {
 		dest_inode->i_links_count = 1;
 		dest_inode->i_blocks = get_inode(ori_entry->inode, disk)->i_blocks;
 
-		set_bitmap(ind_bitmap, disk, INODE_BITMAP, free_ind, USING);
+		set_bitmap(ind_bitmap, disk, INODES, free_ind, USING);
 
 		// copying contents of original file block to new one
 		int file_blk;
 		for(i=0; i<=tar_blk; i++){
 			file_blk = file->i_block[i];
-			free_blk = free_position(blk_bitmap, BLOCK_BITMAP);
+			free_blk = free_position(blk_bitmap, BLOCKS);
 			printf("find free block at %d\n", free_blk);
 			dest_inode->i_block[i] = free_blk;
 			cp_block_content(file_blk, free_blk, EXT2_BLOCK_SIZE, disk);
-			set_bitmap(blk_bitmap, disk, BLOCK_BITMAP, free_blk, USING);
+			set_bitmap(blk_bitmap, disk, BLOCKS, free_blk, USING);
 		}
 	printf("\nFinish cping file...\n");
 	printf("new blk bitmap:\n");

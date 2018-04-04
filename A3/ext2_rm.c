@@ -48,9 +48,8 @@ int main(int argc, char **argv) {
     // disk.img path
     if(argc == 3){
       rm_path = argv[2];
-      printf("get file %s\n", rm_path);
     }else{
-        printf("invalid commands\n");
+        printf("Invalid arguments\n");
         return 0;
     }
 
@@ -62,13 +61,10 @@ int main(int argc, char **argv) {
       fprintf(stderr, "Error on extract filename and directory\n");
       return 0;
     }
-    printf("removing file %s under directory %s\n", rm_filename, rm_dir);
-
     // get the inode representing the dir and the file
     struct ext2_inode *root, *dir_inode;// *file_inode;
     root = get_inode(EXT2_ROOT_INO, disk);
     dir_inode = traverse(rm_dir, root, disk);
-    //file_inode = traverse(rm_filename, root, disk);
     if(dir_inode == NULL){
       fprintf(stderr, "file or directory doesn't exist\n");
       return ENOENT;
