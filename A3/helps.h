@@ -103,16 +103,23 @@ void set_bitmap(int *mp, unsigned char *disk, int mode, int number, int value){
     }else{
     	mp_ptr = (char *) (disk + gd->bg_inode_bitmap * EXT2_BLOCK_SIZE);
     }
+    int shift;
+    if(number % BYTE == 0){
+    	shift = BYTE - 1;
+    	mp_ptr = mp_ptr + (number/BYTE) - 1;
+    }else{
+    	shift = (number % BYTE) - 1;
+    	mp_ptr = mp_ptr + (number/BYTE);
+    }
     
-    mp_ptr = mp_ptr + (number/BYTE);
     // set the value to true (1)
-    if(value == TRUE){
+    if(value == USING){
  		// set the block bit map at the block to 1 and update bitmap
-    	(*mp_ptr) = (*mp_ptr) | (1 << (number%BYTE-1));
-    	mp[tar] = TRUE;
+    	(*mp_ptr) = (*mp_ptr) | (1 << shift);
+    	mp[tar] = USING;
    	}else{
-   		(*mp_ptr) = (*mp_ptr) & ~(1 << (number%BYTE-1));
-   		mp[tar] = FALSE;
+   		(*mp_ptr) = (*mp_ptr) & ~(1 << shift);
+   		mp[tar] = FREE;
    	}
 }
 
@@ -130,11 +137,14 @@ void print_bitmap(int *mp, int len){
 int free_position(int *mp, int mode){
 	int res, i;
 	res = -1;
-	for(i=RESERVED_NODE; i<mode; i++){
+	
+	for(i=0; i<mode; i++){
 		if(mp[i] == FREE){
-			return i+1;//return the block number instead of index
+			res = i+1;//return the block number instead of index
+			break;
 		}
 	}
+	printf("free_position: mode %d, res %d.\n", mode, res);
 	return res;
 }
 
