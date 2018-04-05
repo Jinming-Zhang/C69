@@ -54,10 +54,10 @@ int main(int argc, char **argv) {
         print_par_dir = TRUE;
     }
     else{
-        printf("Invalid arguments\n");
+        fprintf(stderr, "Invalid arguments\n");
         return 0;
     } 
-    
+
     /*printing each directory on a separate line.*/
     root = get_inode(EXT2_ROOT_INO, disk);
 	// get the first path in after the root node
@@ -111,14 +111,15 @@ int main(int argc, char **argv) {
 						block_count++;
 						// check the next direct block for this dir
 						if(block_count <= 12){
-							entry = get_entry(tar_dir->i_block[block_count], disk);
+							entry = get_entry(tar_dir->i_block[block_count],
+											  disk);
 						}else{
 							// check for single indirect blocks
 							int next_blk;
-							next_blk = single_indirblk_num(tar_dir->i_block[12], block_count-12, disk);
+							next_blk = single_indirblk_num(tar_dir->i_block[12],
+														 block_count-12, disk);
          					entry = get_entry(next_blk, disk);
 						}
-
 					}	
 				}
 			}

@@ -1,0 +1,61 @@
+Jinming Zhang
+zhan2754
+
+Description of the programs:
+
+A general bug:
+	Sometimes, a '/' at the end of the path may cause an error.
+	It is a parsing error on the input.
+	It is a little bit late when I found this error, and since it is easy to
+	avoid this problem when testing, and I also need to worry about other course
+	assignments which worth a lot and does not require as much time as I spent
+	on this assignment to complete them, I just the leave this error.
+	
+ext2_ls:
+	Almost works as expected, except I wasn't sure the difference between
+	having a '/' at the end of the path and without it.
+	Also if the given argument is a path to a file and there is a '/' at the end
+	of the path, it will cause an error, however, if its a directory path, then
+	the tail '/' will not cause an error.
+
+ext2_cp:
+	Everything works as expected.
+	The program can
+		1. copy a file to a directory, with same name as src file
+		2. copy a file to a directory with a new file name
+		3. overwrite the file in the directory with  the content of src file
+		4. copy a large file to a directory (This is tested by creating a new
+			directory in the 'largefile.img' (using ext2_mkdir), and then use
+			ext2_cp to copy the 'largefile.txt' to the new directory.
+			I didn't check if the number of 'a's in two files are the same,
+			but the size of them is same ,so I assume it works correctly
+
+ext2_mkdir:
+	Everything works as expected.
+	Maybe a 'brutal' implementation:
+		When creating the new directory and set up its dir_entry block, I set up
+		the '.' and the '..' entry line by line and wrote some magic numbers
+
+ext2_ln:
+	The hardlink works as expected.
+	Problems on the softlink:
+		The program will create a broken 'softlink'.
+		I stored the path in the i_block[] array when the length is less than
+		60 bytes. Also I checked the broken 'softlink' that created by this
+		program: the path is the same as the absolute path given by the command.
+		I think the reason why it does not work is because when I try to open
+		it it refers to the absolute path on my laptop. For example:
+		I created a soft link of a file on the disk by mounting the filesystem
+		and using command line, then I found that the path that stored in that
+		link is an absolute path on my laptop: /home/username/bla/../mnt/afile,
+		instead of /afile
+
+ext2_rm:
+	The program will remove the file, but does not set the dtime field of the 
+	file inode.
+	Problems on impementation: 
+		I did not find the specification for how to update the directory entry
+		when deleting a file, so I simply update the rec_len field of the
+		previous entry to skip the deleted file. (sum up with the rec_len of
+		the entry of the deleted file)
+

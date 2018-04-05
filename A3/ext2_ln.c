@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
        is_s_link = TRUE;
     }
     else{
-        printf("Invalid arguments\n");
+        fprintf(stderr, "Invalid arguments\n");
         return 0;
     }
 
@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
       char *src_dir, *src_name;
       struct ext2_inode *src_dir_inode;
       if(get_dir_filename(src_path, &src_dir, &src_name) != 0){
-        printf("error on extracting src name and dir\n");
+        fprintf(stderr, "error on extracting src name and dir\n");
         return 0;
       }
       // get the inode for the src file

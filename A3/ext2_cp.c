@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
         cp_path = argv[3];
     }
     else{
-        printf("Invalid arguments\n");
+        fprintf(stderr, "Invalid arguments\n");
         return 0;
     } 
    
@@ -66,7 +66,6 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "Error on extracting dir name and file name.\n");
 			return 0;
 		}
-		printf("cping file to dir %s with name %s\n", tar_dir_path, new_file_name);
 		// try to get the target directory inode
 		tar_dir = traverse(tar_dir_path, root, disk);
 		if(tar_dir == NULL){
@@ -82,14 +81,12 @@ int main(int argc, char **argv) {
 			}
 			tar_dir = traverse(tar_dir_path, root, disk);
 			overwrite = TRUE;
-			printf("overwrite file to dir %s with name %s\n", tar_dir_path, new_file_name);
 		}else{// the filename is same as src file
 			char *src_dir_path;
 			if(get_dir_filename(file_path, &src_dir_path, &new_file_name) != 0){
 				fprintf(stderr, "Error on extracting dir name and file name.\n");
 				return 0;
 			}
-			printf("cping file to dir %s with name %s\n", cp_path, new_file_name);
 			free(src_dir_path);
 		}
 	}
@@ -98,20 +95,18 @@ int main(int argc, char **argv) {
 	int blk_bitmap[BLOCKS], ind_bitmap[INODES], free_blk, free_ind;
 	get_bitmap(blk_bitmap, disk, BLOCKS);
 	get_bitmap(ind_bitmap, disk, INODES);
+
+	// get the inode to set up
 	if(overwrite == FALSE){
 		free_ind = free_position(ind_bitmap, INODES);
 		set_bitmap(ind_bitmap, disk, INODES, free_ind, USING);
-		printf("find free inode at postion %d\n", free_ind);
 	}else{
 		int last_blk;
 		last_blk = last_dir_blk(tar_dir, disk);
-		printf("computed last dir entry block: %d, actual block: %d\n",
-			last_blk, tar_dir->i_block[0]);
 		struct ext2_dir_entry_2 *tar_dir_ent;
 		tar_dir_ent = get_entry(last_blk, disk);
 		tar_dir_ent = find_entry(new_file_name, tar_dir_ent);
 		free_ind = tar_dir_ent->inode;
-		printf("get the tar inode: %d\n", free_ind);
 	}
 
 	// set up new inodes for the cp file
@@ -125,12 +120,30 @@ int main(int argc, char **argv) {
 	int file_blk, total_blk;
 	// get the total blocks used to store the file content
     total_blk = total_blks(src_file->i_blocks, disk);
+    // set up a indirection block for the destination file inode
+    if(total_blk > 12){
+    	free_blk = free_position(blk_bitmap, BLOCKS);
+    	dest_inode->i_block[12] = free_blk;
+    	set_bitmap(blk_bitmap, disk, BLOCKS, free_blk, USING);
+    }
 
 	for(i=0; i<total_blk; i++){
-		file_blk = src_file->i_block[i];
 		free_blk = free_position(blk_bitmap, BLOCKS);
-		printf("find free block at %d\n", free_blk);
-		dest_inode->i_block[i] = free_blk;
+		// check if need the indirection
+		if(i > 11){
+			file_blk = single_indirblk_num(src_file->i_block[12],
+										   i - 11, disk);
+			unsigned int *temp = (unsigned int *)
+								get_block(dest_inode->i_block[12], disk);
+			// get the number of blockptr in the indrect block
+			temp = temp + (i - 12);
+			memcpy(temp, &free_blk, sizeof(unsigned int));
+
+		}else{
+			file_blk = src_file->i_block[i];
+			dest_inode->i_block[i] = free_blk;
+		}
+		
 		cp_block_content(file_blk, free_blk, EXT2_BLOCK_SIZE, disk);
 		set_bitmap(blk_bitmap, disk, BLOCKS, free_blk, USING);
 	}
@@ -139,41 +152,8 @@ int main(int argc, char **argv) {
 	if(overwrite == FALSE){
 		int last_blk;
 		last_blk = last_dir_blk(tar_dir, disk);
-
-
-		printf("tar dir entry block is %d\n", last_blk);
 		update_entry_block(last_blk, 
 						   EXT2_FT_REG_FILE, free_ind, new_file_name, disk);
 	}
-
-
-	// copying contents of original file block to new one
-	
-	printf("\nFinish cping file...\n");
-	printf("new blk bitmap:\n");
-	print_bitmap(blk_bitmap, BLOCKS);
-	printf("new ind bitmap:\n");
-	print_bitmap(ind_bitmap, INODES);
-	
-
-
-	
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
     return 0;
 }
