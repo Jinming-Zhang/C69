@@ -26,10 +26,10 @@ unsigned char *disk;
 */
 
 int main(int argc, char **argv) {
-    struct ext2_inode *root, *file, *destiny;
-	char *file_path, *cp_path;
-	int i;
-
+    struct ext2_inode *root, *src_file, *tar_dir;
+	char *file_path, *cp_path, *new_file_name;
+	int i, overwrite;
+	overwrite = FALSE;
     int fd = open(argv[1], O_RDWR);
 
     disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -45,129 +45,116 @@ int main(int argc, char **argv) {
         cp_path = argv[3];
     }
     else{
-        printf("invalid commands\n");
+        printf("Invalid arguments\n");
         return 0;
     } 
    
     /*printing each directory on a separate line.*/
     root = get_inode(EXT2_ROOT_INO, disk);
 	// get the first path in after the root node
-	file = traverse(file_path, root, disk);
-	destiny = traverse(cp_path, root, disk);
-	if(file == NULL){
+	src_file = traverse(file_path, root, disk);
+	tar_dir = traverse(cp_path, root, disk);
+
+	if(src_file == NULL){
 		fprintf(stderr, "No such file or directory\n");
 		return ENOENT;
 	}
-	if(destiny == NULL){
-		printf("renaming not implemented yet\n");
-		return 0;
-	}
-	else{
-		char tar_dir[strlen(cp_path)+1], tar_name[EXT2_NAME_LEN+1];
-		char ori_dir[strlen(file_path)], ori_name[strlen(file_path)];
-
-		// setup original file name and it's directory
-		strcpy(ori_name, strrchr(file_path, '/') + 1);
-		strncpy(ori_dir, file_path, strlen(file_path)-strlen(ori_name));
-		ori_dir[strlen(file_path)-strlen(ori_name)]='\0';
-		// check if the destination path is a directory or a renamed file
-		if(check_inode_type(destiny) == 'd'){
-			strcpy(tar_dir, cp_path);
-			strcpy(tar_name, ori_name);
-			printf("\nCPing to a directory: %s\n", tar_dir);
-		}else{// cping to a directory with a new filename
-			strcpy(tar_name, strrchr(tar_dir,'/')+1);
-			strncpy(tar_dir, cp_path, strlen(cp_path)-strlen(tar_name));
-		}
-		
-		printf("cping file '%s' under dir '%s' to '%s' under '%s'\n", ori_name, ori_dir, tar_name, tar_dir);
-		
-		struct ext2_inode *ori_dir_inode, *tar_dir_inode;
-		printf("geting original dir inode\n");
-		ori_dir_inode = traverse(ori_dir, root, disk);
-		printf("geting target dir inode\n");
-		tar_dir_inode = traverse(tar_dir, root, disk);
-		/* test result tar_dir_node-----------------------*/
-		struct ext2_dir_entry_2 *test = get_entry(tar_dir_inode->i_block[0],disk);
-		printf("testing result tar_dir_inode.......\n");
-		printf("entry name: %s, rec_len: %d, real size: %d\n", 
-			test->name, test->rec_len, real_entry_size(test));
-		test = (void *) test + test->rec_len;
-		printf("entry name: %s, rec_len: %d, real size: %d\n", 
-			test->name, test->rec_len, real_entry_size(test));
-		test = (void *) test + test->rec_len;
-		printf("entry name: %s, rec_len: %d, real size: %d\n", 
-			test->name, test->rec_len, real_entry_size(test));
-		test += test->rec_len;
-		/* end test */
-
-		// check available resources
-		int blk_bitmap[BLOCKS], ind_bitmap[INODES];
-		get_bitmap(blk_bitmap, disk, BLOCKS);
-		get_bitmap(ind_bitmap, disk, INODES);
-		printf("blk bitmap:\n");
-		print_bitmap(blk_bitmap, BLOCKS);
-		printf("ind bitmap:\n");
-		print_bitmap(ind_bitmap, INODES);
-		/* to copy a file */
-		// get the 
-		int free_blk, free_ind;
-		free_ind = free_position(ind_bitmap, INODES);
-		printf("find free inode at postion %d\n", free_ind);
-
-		/* update target directories entries */
-
-		// update the target directory's entry
-		struct ext2_dir_entry_2 *ori_entry;// *tar_entry;
-
-		ori_entry = find_entry(ori_name, 
-							  get_entry(ori_dir_inode->i_block[0], disk));
-		//tar_entry = get_entry(tar_dir_inode->i_block[0], disk);
-		printf("ori_entry information:\n");
-		if(ori_entry == NULL){
-			printf("cant find original file entry under the directory\n");
+	// get the target directory inode and the filename regards to command
+	if(tar_dir == NULL){// maybe a path to a renamed file
+		char *tar_dir_path;
+		if(get_dir_filename(cp_path, &tar_dir_path, &new_file_name) != 0){
+			fprintf(stderr, "Error on extracting dir name and file name.\n");
 			return 0;
 		}
-		printf("entry inode: %d, entry filename: %s, entry rec_len: %d, entry real size :%d\n",
-				ori_entry->inode, ori_entry->name,
-				ori_entry->rec_len, real_entry_size(ori_entry));
-
-		int tar_blk;
-	    if((tar_dir_inode->i_blocks)%2 == 0){
-		 	tar_blk = (tar_dir_inode->i_blocks)/2 - 1;
-		}else{
-			tar_blk = (tar_dir_inode->i_blocks)/2;
+		printf("cping file to dir %s with name %s\n", tar_dir_path, new_file_name);
+		// try to get the target directory inode
+		tar_dir = traverse(tar_dir_path, root, disk);
+		if(tar_dir == NULL){
+			fprintf(stderr, "No such file or directory\n");
+			return ENOENT;
 		}
-		printf("tar dir entry block is %d\n", tar_dir_inode->i_block[0]);
-		update_entry_block(tar_dir_inode->i_block[0],
-						   ori_entry->file_type, free_ind, tar_name, disk);
+	}else{// may cp to a directory or overwrite an existed file
+		if(check_inode_type(tar_dir) != 'd'){// overwrite an existed file
+			char *tar_dir_path;
+			if(get_dir_filename(cp_path, &tar_dir_path, &new_file_name) != 0){
+				fprintf(stderr, "Error on extracting dir name and file name.\n");
+				return 0;
+			}
+			tar_dir = traverse(tar_dir_path, root, disk);
+			overwrite = TRUE;
+			printf("overwrite file to dir %s with name %s\n", tar_dir_path, new_file_name);
+		}else{// the filename is same as src file
+			char *src_dir_path;
+			if(get_dir_filename(file_path, &src_dir_path, &new_file_name) != 0){
+				fprintf(stderr, "Error on extracting dir name and file name.\n");
+				return 0;
+			}
+			printf("cping file to dir %s with name %s\n", cp_path, new_file_name);
+			free(src_dir_path);
+		}
+	}
 
-		// setup new inode for destination
-		struct ext2_inode *dest_inode = get_inode(free_ind, disk);
-		dest_inode->i_mode = dest_inode->i_mode | EXT2_S_IFREG;
-		dest_inode->i_size = get_inode(ori_entry->inode, disk)->i_size;
-		//dest_inode->i_ctime = NULL;
-		dest_inode->i_links_count = 1;
-		dest_inode->i_blocks = get_inode(ori_entry->inode, disk)->i_blocks;
-
+	// allocate necessary resources
+	int blk_bitmap[BLOCKS], ind_bitmap[INODES], free_blk, free_ind;
+	get_bitmap(blk_bitmap, disk, BLOCKS);
+	get_bitmap(ind_bitmap, disk, INODES);
+	if(overwrite == FALSE){
+		free_ind = free_position(ind_bitmap, INODES);
 		set_bitmap(ind_bitmap, disk, INODES, free_ind, USING);
+		printf("find free inode at postion %d\n", free_ind);
+	}else{
+		int last_blk;
+		last_blk = last_dir_blk(tar_dir, disk);
+		printf("computed last dir entry block: %d, actual block: %d\n",
+			last_blk, tar_dir->i_block[0]);
+		struct ext2_dir_entry_2 *tar_dir_ent;
+		tar_dir_ent = get_entry(last_blk, disk);
+		tar_dir_ent = find_entry(new_file_name, tar_dir_ent);
+		free_ind = tar_dir_ent->inode;
+		printf("get the tar inode: %d\n", free_ind);
+	}
 
-		// copying contents of original file block to new one
-		int file_blk;
-		for(i=0; i<=tar_blk; i++){
-			file_blk = file->i_block[i];
-			free_blk = free_position(blk_bitmap, BLOCKS);
-			printf("find free block at %d\n", free_blk);
-			dest_inode->i_block[i] = free_blk;
-			cp_block_content(file_blk, free_blk, EXT2_BLOCK_SIZE, disk);
-			set_bitmap(blk_bitmap, disk, BLOCKS, free_blk, USING);
-		}
+	// set up new inodes for the cp file
+	struct ext2_inode *dest_inode = get_inode(free_ind, disk);
+	dest_inode->i_mode = EXT2_S_IFREG;
+	dest_inode->i_size = src_file->i_size;
+	dest_inode->i_links_count = 1;
+	dest_inode->i_blocks = src_file->i_blocks;
+
+	// set up blocks to cping the src file contents
+	int file_blk, total_blk;
+	// get the total blocks used to store the file content
+    total_blk = total_blks(src_file->i_blocks, disk);
+
+	for(i=0; i<total_blk; i++){
+		file_blk = src_file->i_block[i];
+		free_blk = free_position(blk_bitmap, BLOCKS);
+		printf("find free block at %d\n", free_blk);
+		dest_inode->i_block[i] = free_blk;
+		cp_block_content(file_blk, free_blk, EXT2_BLOCK_SIZE, disk);
+		set_bitmap(blk_bitmap, disk, BLOCKS, free_blk, USING);
+	}
+
+	// only update the target directory's entry when it's not overwriting
+	if(overwrite == FALSE){
+		int last_blk;
+		last_blk = last_dir_blk(tar_dir, disk);
+
+
+		printf("tar dir entry block is %d\n", last_blk);
+		update_entry_block(last_blk, 
+						   EXT2_FT_REG_FILE, free_ind, new_file_name, disk);
+	}
+
+
+	// copying contents of original file block to new one
+	
 	printf("\nFinish cping file...\n");
 	printf("new blk bitmap:\n");
 	print_bitmap(blk_bitmap, BLOCKS);
 	printf("new ind bitmap:\n");
 	print_bitmap(ind_bitmap, INODES);
-	}
+	
 
 
 	

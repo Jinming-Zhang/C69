@@ -144,7 +144,6 @@ int free_position(int *mp, int mode){
 			break;
 		}
 	}
-	printf("free_position: mode %d, res %d.\n", mode, res);
 	return res;
 }
 
@@ -441,13 +440,15 @@ void cp_block_content(int src, int tar, int size, unsigned char *disk){
  */
 struct ext2_dir_entry_2 *find_entry(char *filename,
 									struct ext2_dir_entry_2 *enter){
-	printf("geting the file entry of file %s\n",filename);
+	printf("geting the file entry of file %sn",filename);
 	char entry_name[EXT2_NAME_LEN + 1];
 	int cur_size = 0;
 	struct ext2_dir_entry_2 *res;
 	res = enter;
 	while((cur_size+res->rec_len) <= EXT2_BLOCK_SIZE){
+			printf("geting the file entry of file %s\n",filename);
 		memcpy(entry_name, res->name, res->name_len);
+			printf("geting the file entry of file %s\n",filename);
 		entry_name[res->name_len] = '\0';
 		printf("checking entry: %s\n", entry_name);
 		if(strcmp(filename, entry_name) == 0){
